@@ -17,7 +17,7 @@ export default function CategoryGrid() {
   return (
     <section className="py-8 bg-white shadow-sm border-b border-gray-100">
       <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
-        <h2 className="text-xl font-bold text-gray-800 mb-6 px-2">Popular Categories</h2>
+        <h2 className="text-xl font-bold text-gray-800 mb-6 px-2">Popular  Categories</h2>
         
         <div className="grid grid-cols-4 md:grid-cols-4 lg:grid-cols-8 gap-4 px-2">
           {categories.map((cat) => {
