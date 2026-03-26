@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@theme {
+  --font-poppins: var(--font-poppins);
+  --color-primary: #046BD2;
+  --color-primary-hover: #035bb3;
+  --color-bg-light: #F2F4F7;
+  --color-input-bg: #EBEBEB;
+}
+
+body {
+  background-color: var(--color-bg-light);
+  color: #333333;
+  font-family: var(--font-poppins), sans-serif;
+}
