@@ -21,7 +21,7 @@ export default function Footer() {
           <p className="text-white text-[15px] sm:text-[16px] max-w-2xl text-center md:text-left leading-snug">
             Have a question, suggestion, or just want to say hi? We'd love to hear from you! Our team at Deal and Buy is always eager to assist you.
           </p>
-          <button className="bg-white text-[#046BD2] font-semibold text-[15px] px-8 py-2.5 rounded hover:bg-gray-100 transition-colors whitespace-nowrap shadow-sm">
+          <button suppressHydrationWarning className="bg-white text-[#046BD2] font-semibold text-[15px] px-8 py-2.5 rounded hover:bg-gray-100 transition-colors whitespace-nowrap shadow-sm">
             Contact Us
           </button>
         </div>

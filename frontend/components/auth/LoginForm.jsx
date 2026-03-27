@@ -1,15 +1,39 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Input from '../ui/Input';
 import Button from '../ui/Button';
 import SocialLogin from '../ui/SocialLogin';
+import api from '../../lib/axiosInstance';
 
 export default function LoginForm({ onToggleMode }) {
-  const handleSubmit = (e) => {
+  const router = useRouter();
+  const [formData, setFormData] = useState({ email: '', password: '' });
+  const [errorMsg, setErrorMsg] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Dummy submit
-    console.log('Login submitted');
+    setLoading(true);
+    setErrorMsg('');
+
+    try {
+      const res = await api.post('/auth/login', formData);
+      if (res.data.accessToken) {
+        localStorage.setItem('accessToken', res.data.accessToken);
+        router.push('/');
+      }
+    } catch (err) {
+      setErrorMsg(err.response?.data?.message || err.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.id]: e.target.value });
   };
 
   return (
@@ -19,11 +43,19 @@ export default function LoginForm({ onToggleMode }) {
         Please provide your Email Login on DealNBuy
       </p>
 
+      {errorMsg && (
+        <div className="mb-[20px] p-[10px] text-[13px] text-red-600 bg-red-50 border-[0.8px] border-red-200 rounded-[5px]">
+          {errorMsg}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="flex flex-col gap-[20px] w-full">
         <Input 
-          id="identifier"
-          label=" Email"
-          placeholder=" Email"
+          id="email"
+          label="Email"
+          placeholder="Email"
+          value={formData.email}
+          onChange={handleChange}
           required
         />
         <Input 
@@ -31,10 +63,14 @@ export default function LoginForm({ onToggleMode }) {
           type="password"
           label="Password"
           placeholder="Password"
+          value={formData.password}
+          onChange={handleChange}
           required
         />
 
-        <Button type="submit" className="mt-2">Login</Button>
+        <Button type="submit" isLoading={loading} disabled={loading} className="mt-2">
+          {loading ? 'Logging in...' : 'Login'}
+        </Button>
       </form>
 
       <div className="flex justify-between items-center mt-[20px] text-[13px]">

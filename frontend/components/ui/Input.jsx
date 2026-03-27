@@ -19,6 +19,7 @@ export default function Input({ label, type = 'text', id, ...props }) {
         <input
           id={id}
           type={inputType}
+          suppressHydrationWarning
           className="w-full h-[48px] px-[15px] bg-[#EBEBEB] border-[0.8px] border-[rgba(149,149,149,0.52)] rounded-[5px] text-[14px] text-[#333333] placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-[#046BD2] focus:border-[#046BD2] transition-colors"
           {...props}
         />
@@ -26,6 +27,7 @@ export default function Input({ label, type = 'text', id, ...props }) {
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
+            suppressHydrationWarning
             className="absolute right-[15px] top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
             aria-label={showPassword ? "Hide password" : "Show password"}
           >
