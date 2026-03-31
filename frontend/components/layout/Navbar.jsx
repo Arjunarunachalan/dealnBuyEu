@@ -2,13 +2,29 @@
 
 import Link from 'next/link';
 import { Search, MapPin, Bell, Menu, User, PlusCircle, MessageCircle } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [locationSearch, setLocationSearch] = useState('');
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState('All India');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = () => {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        setIsLoggedIn(true);
+      } else {
+        setIsLoggedIn(false);
+      }
+    };
+
+    checkAuth();
+    window.addEventListener('storage', checkAuth);
+    return () => window.removeEventListener('storage', checkAuth);
+  }, []);
 
   const locations = [
     'All India', 'New Delhi', 'Mumbai', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 'Pune'
@@ -107,20 +123,51 @@ export default function Navbar() {
                 2
               </span>
             </button>
-            <Link href="/registration_login" className="flex items-center text-gray-700 hover:text-[#046BD2] font-semibold transition-colors">
-              <User size={22} className="mr-2" />
-              Login
-            </Link>
-            <button className="flex items-center bg-white border-4 border-[#FFCE00] shadow-md rounded-full px-5 py-2 font-bold text-gray-800 hover:scale-105 transition-transform">
+            {isLoggedIn ? (
+              <div className="relative group cursor-pointer z-[100]">
+                <div className="flex items-center text-gray-700 hover:text-[#046BD2] font-semibold transition-colors">
+                  <div className="w-8 h-8 rounded-full bg-gray-200 border border-gray-300 flex items-center justify-center overflow-hidden">
+                    <User size={18} className="text-gray-500" />
+                  </div>
+                </div>
+                {/* Dropdown on hover */}
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 shadow-lg rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100]">
+                  <div className="py-2">
+                    <Link href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">My Profile</Link>
+                    <button 
+                      onClick={() => {
+                        localStorage.removeItem('accessToken');
+                        setIsLoggedIn(false);
+                      }} 
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <Link href="/registration_login" className="flex items-center text-gray-700 hover:text-[#046BD2] font-semibold transition-colors">
+                <User size={22} className="mr-2" />
+                Login
+              </Link>
+            )}
+            <Link href="/postadd" className="flex items-center bg-white border-4 border-[#FFCE00] shadow-md rounded-full px-5 py-2 font-bold text-gray-800 hover:scale-105 transition-transform">
               <PlusCircle size={20} className="mr-2 text-[#046BD2]" />
               POST FREE AD
-            </button>
+            </Link>
           </div>
 
           {/* Mobile menu button */}
           <div className="md:hidden flex items-center space-x-4">
-            <Link href="/registration_login" className="text-gray-700">
-               <User size={24} />
+            <Link href={isLoggedIn ? "#" : "/registration_login"} className="text-gray-700">
+               {isLoggedIn ? (
+                 <div className="w-7 h-7 rounded-full bg-gray-200 border border-gray-300 flex items-center justify-center overflow-hidden">
+                   <User size={16} className="text-gray-500" />
+                 </div>
+               ) : (
+                 <User size={24} />
+               )}
             </Link>
             <button 
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -206,18 +253,37 @@ export default function Navbar() {
                 <span className="flex-1 font-medium text-[15px]">Notifications</span>
                 <span className="bg-red-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-full">2</span>
               </Link>
-              <Link href="/registration_login" className="flex items-center text-gray-700 p-2 sm:p-3 hover:bg-gray-50 rounded-md transition-colors">
-                <User size={22} className="mr-3 text-[#046BD2]" />
-                <span className="font-medium text-[15px]">Login / Register</span>
-              </Link>
+              {isLoggedIn ? (
+                <>
+                  <Link href="#" className="flex items-center text-gray-700 p-2 sm:p-3 hover:bg-gray-50 rounded-md transition-colors">
+                    <User size={22} className="mr-3 text-[#046BD2]" />
+                    <span className="font-medium text-[15px]">My Profile</span>
+                  </Link>
+                  <button 
+                    onClick={() => {
+                      localStorage.removeItem('accessToken');
+                      setIsLoggedIn(false);
+                    }} 
+                    className="flex w-full items-center text-gray-700 p-2 sm:p-3 hover:bg-gray-50 rounded-md transition-colors"
+                  >
+                    <User size={22} className="mr-3 text-[#046BD2]" />
+                    <span className="font-medium text-[15px]">Logout</span>
+                  </button>
+                </>
+              ) : (
+                <Link href="/registration_login" className="flex items-center text-gray-700 p-2 sm:p-3 hover:bg-gray-50 rounded-md transition-colors">
+                  <User size={22} className="mr-3 text-[#046BD2]" />
+                  <span className="font-medium text-[15px]">Login / Register</span>
+                </Link>
+              )}
             </div>
 
             {/* Sell Button Mobile */}
             <div className="pt-2 pb-2">
-              <button className="w-full flex justify-center items-center bg-white border-[3px] border-[#FFCE00] shadow-sm rounded-md px-5 py-3 font-bold text-gray-800 hover:bg-gray-50 transition-colors">
+              <Link href="/postadd" className="w-full flex justify-center items-center bg-white border-[3px] border-[#FFCE00] shadow-sm rounded-md px-5 py-3 font-bold text-gray-800 hover:bg-gray-50 transition-colors">
                 <PlusCircle size={20} className="mr-2 text-[#046BD2]" />
                 POST FREE AD
-              </button>
+              </Link>
             </div>
           </div>
         </div>

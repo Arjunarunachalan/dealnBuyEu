@@ -3,6 +3,7 @@ export default function SocialLogin({ provider = 'Google', onClick, text = "Sign
     <button
       onClick={onClick}
       type="button"
+      suppressHydrationWarning
       className="w-full flex items-center justify-center gap-2 h-[48px] bg-[#ffffff] border border-gray-300 rounded-[5px] text-[15px] font-medium text-[#046BD2] hover:bg-gray-50 transition-colors shadow-sm"
     >
       <svg width="20" height="20" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">

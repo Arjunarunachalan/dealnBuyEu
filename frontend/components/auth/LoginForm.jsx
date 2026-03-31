@@ -79,7 +79,7 @@ export default function LoginForm({ onToggleMode }) {
         </Link>
         <span className="text-[#333333]">
           Don't have an account?{' '}
-          <button type="button" onClick={onToggleMode} className="text-[#046BD2] hover:underline font-medium">
+          <button type="button" onClick={onToggleMode} suppressHydrationWarning className="text-[#046BD2] hover:underline font-medium">
             Signup
           </button>
         </span>
