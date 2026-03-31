@@ -1,6 +1,12 @@
 node_modules
-.env
 .DS_Store
 *.log
 /node_modules
-.env*
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env*.local
