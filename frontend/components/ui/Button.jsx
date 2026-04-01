@@ -10,6 +10,7 @@ export default function Button({ children, className = '', variant = 'primary', 
     <button 
       className={`${baseStyles} ${variants[variant]} ${className}`}
       disabled={isLoading || disabled}
+      suppressHydrationWarning
       {...props}
     >
       {isLoading ? (

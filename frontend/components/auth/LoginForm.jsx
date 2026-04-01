@@ -7,6 +7,7 @@ import Input from '../ui/Input';
 import Button from '../ui/Button';
 import SocialLogin from '../ui/SocialLogin';
 import api from '../../lib/axiosInstance';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export default function LoginForm({ onToggleMode }) {
   const router = useRouter();
@@ -22,7 +23,10 @@ export default function LoginForm({ onToggleMode }) {
     try {
       const res = await api.post('/auth/login', formData);
       if (res.data.accessToken) {
-        localStorage.setItem('accessToken', res.data.accessToken);
+        useAuthStore.getState().login(
+          { username: res.data.username, email: res.data.email },
+          res.data.accessToken
+        );
         router.push('/');
       }
     } catch (err) {
@@ -79,7 +83,7 @@ export default function LoginForm({ onToggleMode }) {
         </Link>
         <span className="text-[#333333]">
           Don't have an account?{' '}
-          <button type="button" onClick={onToggleMode} className="text-[#046BD2] hover:underline font-medium">
+          <button type="button" onClick={onToggleMode} suppressHydrationWarning className="text-[#046BD2] hover:underline font-medium">
             Signup
           </button>
         </span>

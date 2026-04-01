@@ -5,10 +5,15 @@ import LoginForm from '../../components/auth/LoginForm';
 import RegisterForm from '../../components/auth/RegisterForm';
 import AuthIllustration from '../../components/auth/AuthIllustration';
 
+import { useAuth } from '../../lib/useAuth';
+
 export default function RegistrationLogin() {
+  const { isChecking } = useAuth(false);
   const [isLogin, setIsLogin] = useState(true);
 
   const toggleMode = () => setIsLogin(!isLogin);
+
+  if (isChecking) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
 
   return (
     <main className="min-h-screen bg-[#F2F4F7] flex items-center justify-center p-4 py-8 md:py-12">

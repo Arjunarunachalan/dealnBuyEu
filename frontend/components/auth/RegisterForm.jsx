@@ -7,6 +7,7 @@ import SocialLogin from '../ui/SocialLogin';
 import OTPInput from '../ui/OTPInput';
 import { useRouter } from 'next/navigation';
 import api from '../../lib/axiosInstance';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export default function RegisterForm({ onToggleMode }) {
   const router = useRouter();
@@ -74,9 +75,12 @@ export default function RegisterForm({ onToggleMode }) {
         otp: formData.otp
       });
 
-      // Only access token stored in localStorage; refresh token is in HTTP-only cookie
+      // Update state via Zustand store directly 
       if (res.data.accessToken) {
-        localStorage.setItem("accessToken", res.data.accessToken);
+        useAuthStore.getState().login(
+          { username: res.data.username || formData.username, email: formData.email },
+          res.data.accessToken
+        );
       }
 
       console.log("Verified successfully!");

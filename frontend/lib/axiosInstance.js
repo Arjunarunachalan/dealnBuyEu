@@ -1,4 +1,5 @@
 import axios from "axios";
+import { useAuthStore } from "../store/useAuthStore";
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api",
@@ -12,7 +13,7 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     if (typeof window !== "undefined") {
-      const accessToken = localStorage.getItem("accessToken");
+      const accessToken = useAuthStore.getState().accessToken || localStorage.getItem("accessToken");
       if (accessToken) {
         config.headers.Authorization = `Bearer ${accessToken}`;
       }
@@ -41,14 +42,17 @@ api.interceptors.response.use(
         );
 
         if (refreshRes.data?.accessToken) {
-          localStorage.setItem("accessToken", refreshRes.data.accessToken);
+          useAuthStore.getState().login(
+            useAuthStore.getState().user,
+            refreshRes.data.accessToken
+          );
           originalRequest.headers.Authorization = `Bearer ${refreshRes.data.accessToken}`;
           return api(originalRequest);
         }
       } catch (refreshError) {
         console.error("Session expired. Please log in again.");
         if (typeof window !== "undefined") {
-          localStorage.removeItem("accessToken");
+          useAuthStore.getState().logout();
           window.location.href = "/registration_login";
         }
         return Promise.reject(refreshError);
