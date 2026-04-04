@@ -143,12 +143,12 @@ export default function Navbar() {
                 <div className="flex items-center text-gray-700 hover:text-[#046BD2] font-semibold transition-colors">
                   <div 
                     className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center overflow-hidden text-white text-sm font-bold"
-                    style={{ backgroundColor: getBgColor(user?.username) }}
+                    style={{ backgroundColor: getBgColor(user?.name) }}
                   >
                     {user?.profilePic ? (
                       <img src={user.profilePic} alt="Profile" className="w-full h-full object-cover" />
                     ) : (
-                      getInitials(user?.username)
+                      getInitials(user?.name)
                     )}
                   </div>
                 </div>
@@ -189,12 +189,12 @@ export default function Navbar() {
                {isLoggedIn ? (
                  <div 
                    className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center overflow-hidden text-white text-[11px] font-bold"
-                   style={{ backgroundColor: getBgColor(user?.username) }}
+                   style={{ backgroundColor: getBgColor(user?.name) }}
                  >
                    {user?.profilePic ? (
                       <img src={user.profilePic} alt="Profile" className="w-full h-full object-cover" />
                     ) : (
-                      getInitials(user?.username)
+                      getInitials(user?.name)
                     )}
                  </div>
                ) : (

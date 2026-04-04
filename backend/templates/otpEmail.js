@@ -3,9 +3,9 @@
  * Note: JavaScript doesn't work in emails — we use CSS `user-select: all`
  * so users can one-click select the OTP code to copy it.
  * @param {string} otp - The 6-digit OTP code.
- * @param {string} username - The user's name.
+ * @param {string} name - The user's name.
  */
-export const getOtpEmailHtml = (otp, username = "User") => {
+export const getOtpEmailHtml = (otp, name = "User") => {
   return `
   <!DOCTYPE html>
   <html>
@@ -27,7 +27,7 @@ export const getOtpEmailHtml = (otp, username = "User") => {
             <!-- Body -->
             <tr>
               <td style="padding:35px 40px;">
-                <p style="color:#333333;font-size:16px;margin:0 0 10px;">Hello <strong>${username}</strong>,</p>
+                <p style="color:#333333;font-size:16px;margin:0 0 10px;">Hello <strong>${name}</strong>,</p>
                 <p style="color:#555555;font-size:14px;line-height:1.6;margin:0 0 25px;">
                   We received a request to verify your email address. Please use the following One-Time Password to complete your registration:
                 </p>

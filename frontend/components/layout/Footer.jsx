@@ -92,6 +92,7 @@ export default function Footer() {
                   <h4 className="font-bold text-[17px] mb-4 tracking-wide">International</h4>
                   <div className="space-y-3">
                      <select
+                        suppressHydrationWarning
                         className="w-full text-[14px] pl-3 pr-10 py-2.5 border border-gray-700/60 rounded bg-[#222222] text-white focus:outline-none focus:border-[#046BD2] cursor-pointer appearance-none shadow-inner"
                         value={selectedCountry}
                         onChange={(e) => setSelectedCountry(e.target.value)}
@@ -127,7 +128,7 @@ export default function Footer() {
 
           {/* Copyright Bottom */}
           <div className="border-t border-gray-800/60 py-6 flex flex-col md:flex-row justify-between items-center text-[13px] text-gray-400 gap-4">
-            <p>Copyright © 2023 - {new Date().getFullYear()} DealNBuy. All rights reserved.</p>
+            <p suppressHydrationWarning>Copyright © 2023 - {new Date().getFullYear()} DealNBuy. All rights reserved.</p>
             <div className="flex space-x-6 sm:space-x-8">
                <a href="#" className="hover:text-white transition-colors underline decoration-gray-600 underline-offset-4">Terms Of Use</a>
                <a href="#" className="hover:text-white transition-colors underline decoration-gray-600 underline-offset-4">Privacy Policy</a>

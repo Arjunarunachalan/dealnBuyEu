@@ -5,6 +5,9 @@ import cookieParser from "cookie-parser";
 import connectDB from "./config/db.js";
 import itemRoutes from "./routes/itemRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import adminRoutes from "./modules/admin/admin.routes.js";
+import { categoryPublicRouter, categoryAdminRouter } from "./modules/category/category.routes.js";
+import postRoutes from "./modules/post/post.routes.js";
 
 // Load env vars
 dotenv.config();
@@ -25,6 +28,10 @@ app.use(cookieParser());
 // Routes
 app.use("/api/items", itemRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/admin/categories", categoryAdminRouter);
+app.use("/api/categories", categoryPublicRouter);
+app.use("/api/posts", postRoutes);
 
 app.get("/", (req, res) => {
   res.send("API is running...");

@@ -24,7 +24,13 @@ export default function LoginForm({ onToggleMode }) {
       const res = await api.post('/auth/login', formData);
       if (res.data.accessToken) {
         useAuthStore.getState().login(
-          { username: res.data.username, email: res.data.email },
+          { 
+            name: res.data.name, 
+            surname: res.data.surname, 
+            pseudoName: res.data.pseudoName, 
+            email: res.data.email,
+            role: res.data.role 
+          },
           res.data.accessToken
         );
         router.push('/');

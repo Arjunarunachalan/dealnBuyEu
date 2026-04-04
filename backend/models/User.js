@@ -3,7 +3,15 @@ import bcrypt from "bcryptjs";
 
 const userSchema = mongoose.Schema(
   {
-    username: {
+    name: {
+      type: String,
+      required: true,
+    },
+    surname: {
+      type: String,
+      required: true,
+    },
+    pseudoName: {
       type: String,
       required: true,
     },
@@ -38,6 +46,15 @@ const userSchema = mongoose.Schema(
     },
     refreshToken: {
       type: String,
+    },
+    role: {
+      type: String,
+      enum: ["user", "admin", "super_admin"],
+      default: "user",
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
     },
   },
   {

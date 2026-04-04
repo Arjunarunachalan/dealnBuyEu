@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Stepper from '../../components/postadd/Stepper';
 import CategorySelector from '../../components/postadd/CategorySelector';
 import SubcategorySelector from '../../components/postadd/SubcategorySelector';
 import ProductDetailsForm from '../../components/postadd/ProductDetailsForm';
+import api from '../../lib/axiosInstance';
 
 import { useAuth } from '../../lib/useAuth';
 
@@ -13,8 +14,25 @@ export default function PostAddPage() {
   const [step, setStep] = useState(1);
   const [selection, setSelection] = useState({
     categoryId: null,
-    subcategoryId: null,
+    subcategoryId: null, // this will be the ID of the leaf category
   });
+
+  const [categories, setCategories] = useState([]);
+  const [loadingCats, setLoadingCats] = useState(true);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const { data } = await api.get('/categories');
+        setCategories(data?.data || []);
+      } catch (err) {
+        console.error('Failed to fetch categories:', err);
+      } finally {
+        setLoadingCats(false);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   const handleCategorySelect = (id) => {
     setSelection({ ...selection, categoryId: id });
@@ -34,10 +52,44 @@ export default function PostAddPage() {
     setStep(2);
   };
 
-  const handleFinalSubmit = (data) => {
-    console.log('Final Post Data:', { ...selection, ...data });
-    alert('Post submitted successfully (Dummy)! Check console for data.');
-    // In a real app, you'd route to the newly created post or home
+  const handleFinalSubmit = async (data) => {
+    try {
+      // Structure payload for the backend specifically
+      const payload = {
+        title: data.title,
+        description: data.description,
+        price: data.price,
+        location: { city: data.location },
+        images: data.images,
+        categoryId: selection.subcategoryId, // The final leaf node we are posting in
+        attributes: {} // populate explicit dynamic attributes
+      };
+
+      // Everything else in data is an attribute
+      Object.keys(data).forEach(key => {
+         if (!['title', 'description', 'price', 'location', 'images'].includes(key)) {
+            payload.attributes[key] = data[key];
+         }
+      });
+
+      const res = await api.post('/posts', payload);
+      alert('Post submitted successfully! Redirecting...');
+      
+      // Calculate slug for redirect
+      let slug = '';
+      const traverse = (nodes) => {
+         for (let n of nodes) {
+            if (n._id === selection.subcategoryId) slug = n.slug;
+            if (n.children && !slug) traverse(n.children);
+         }
+      };
+      if (categories) traverse(categories);
+      
+      window.location.href = slug ? `/category/${slug}` : '/';
+    } catch (err) {
+      console.error(err);
+      alert(err?.response?.data?.message || 'Failed to submit post.');
+    }
   };
 
   if (isChecking) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -53,27 +105,36 @@ export default function PostAddPage() {
         <Stepper currentStep={step} />
 
         <div className="mt-8">
-          {step === 1 && (
-            <CategorySelector 
-              onSelect={handleCategorySelect} 
-              selectedId={selection.categoryId} 
-            />
-          )}
+          {loadingCats ? (
+            <div className="flex justify-center p-10"><div className="animate-spin h-8 w-8 border-4 border-blue-500 rounded-full border-t-transparent"></div></div>
+          ) : (
+            <>
+              {step === 1 && (
+                <CategorySelector 
+                  categories={categories}
+                  onSelect={handleCategorySelect} 
+                  selectedId={selection.categoryId} 
+                />
+              )}
 
-          {step === 2 && (
-            <SubcategorySelector 
-              categoryId={selection.categoryId}
-              onSelect={handleSubcategorySelect}
-              onBack={handleBackToCategories}
-            />
-          )}
+              {step === 2 && (
+                <SubcategorySelector 
+                  categories={categories}
+                  categoryId={selection.categoryId}
+                  onSelect={handleSubcategorySelect}
+                  onBack={handleBackToCategories}
+                />
+              )}
 
-          {step === 3 && (
-            <ProductDetailsForm 
-              subcategoryId={selection.subcategoryId}
-              onBack={handleBackToSubcategories}
-              onSubmit={handleFinalSubmit}
-            />
+              {step === 3 && (
+                <ProductDetailsForm 
+                  categories={categories}
+                  subcategoryId={selection.subcategoryId}
+                  onBack={handleBackToSubcategories}
+                  onSubmit={handleFinalSubmit}
+                />
+              )}
+            </>
           )}
         </div>
       </div>

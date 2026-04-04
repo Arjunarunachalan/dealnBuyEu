@@ -17,7 +17,9 @@ export default function RegisterForm({ onToggleMode }) {
   const [formData, setFormData] = useState({
     email: '',
     otp: '',
-    username: '',
+    name: '',
+    surname: '',
+    pseudoName: '',
     password: '',
     confirmPassword: '',
     country: '',
@@ -45,7 +47,9 @@ export default function RegisterForm({ onToggleMode }) {
     try {
       const res = await api.post('/auth/register', {
         email: formData.email,
-        username: formData.username,
+        name: formData.name,
+        surname: formData.surname,
+        pseudoName: formData.pseudoName,
         password: formData.password,
         country: formData.country,
         authProvider: 'local'
@@ -78,7 +82,7 @@ export default function RegisterForm({ onToggleMode }) {
       // Update state via Zustand store directly 
       if (res.data.accessToken) {
         useAuthStore.getState().login(
-          { username: res.data.username || formData.username, email: formData.email },
+          { name: res.data.name || formData.name, surname: res.data.surname || formData.surname, pseudoName: res.data.pseudoName || formData.pseudoName, email: formData.email },
           res.data.accessToken
         );
       }
@@ -126,10 +130,28 @@ export default function RegisterForm({ onToggleMode }) {
             />
             
             <Input 
-              id="username"
+              id="name"
               type="text"
-              placeholder="Full Name"
-              value={formData.username}
+              placeholder="Name"
+              value={formData.name}
+              onChange={handleChange}
+              required
+            />
+            
+            <Input 
+              id="surname"
+              type="text"
+              placeholder="Surname"
+              value={formData.surname}
+              onChange={handleChange}
+              required
+            />
+            
+            <Input 
+              id="pseudoName"
+              type="text"
+              placeholder="Pseudo Name"
+              value={formData.pseudoName}
               onChange={handleChange}
               required
             />

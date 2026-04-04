@@ -6,23 +6,40 @@ import Input from '../ui/Input';
 import Button from '../ui/Button';
 import { ImagePlus, MapPin, Tag } from 'lucide-react';
 
-export default function ProductDetailsForm({ subcategoryId, onBack, onSubmit }) {
-  const dynamicFields = dummyDynamicFieldsOptions[subcategoryId] || dummyDynamicFieldsOptions['default'];
+export default function ProductDetailsForm({ categories, subcategoryId, onBack, onSubmit }) {
+  
+  // Recursively find the selected leaf category to get its dynamic attributes
+  const dynamicFields = (() => {
+    let result = null;
+    const findCat = (nodes) => {
+      for (const node of nodes) {
+        if (node._id === subcategoryId) {
+          result = node;
+          return;
+        }
+        if (node.children?.length > 0) findCat(node.children);
+      }
+    };
+    if (categories?.length) findCat(categories);
+    return result?.attributes || [];
+  })();
   
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     price: '',
     location: '',
-    ...dynamicFields.reduce((acc, field) => ({ ...acc, [field.id]: '' }), {})
+    ...dynamicFields.reduce((acc, field) => ({ ...acc, [field.key]: '' }), {}) // Note: field.key used instead of field.id to match actual attribute payload
   });
   const [images, setImages] = useState([]);
 
   const handleChange = (e) => {
-    const { id, value, type } = e.target;
+    // using name for radio/checkbox, id for others generally
+    const key = e.target.name || e.target.id;
+    const { value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [id]: value
+      [key]: value
     }));
   };
 
@@ -102,16 +119,17 @@ export default function ProductDetailsForm({ subcategoryId, onBack, onSubmit }) 
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {dynamicFields.map(field => (
-                <div key={field.id} className="w-full">
-                  <label htmlFor={field.id} className="block text-[12px] font-normal text-[#333333] mb-2">
+                <div key={field.key} className="w-full">
+                  <label htmlFor={field.key} className="block text-[12px] font-normal text-[#333333] mb-2">
                     {field.label} {field.required && '*'}
                   </label>
                   
                   {field.type === 'select' && (
                     <select
-                      id={field.id}
-                      className="w-full h-[48px] px-4 bg-[#EBEBEB] border-[0.8px] border-[rgba(149,149,149,0.52)] rounded-[5px] text-[14px] text-[#333333] focus:outline-none focus:ring-1 focus:ring-[#046BD2] focus:border-[#046BD2] transition-colors"
-                      value={formData[field.id]}
+                      id={field.key}
+                      name={field.key}
+                      className="w-full h-[48px] px-4 bg-[#EBEBEB] border-[0.8px] border-[rgba(149,149,149,0.52)] rounded-[5px] text-[14px] text-[#333333] focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-[#046BD2] transition-colors"
+                      value={formData[field.key] || ''}
                       onChange={handleChange}
                       required={field.required}
                     >
@@ -124,29 +142,44 @@ export default function ProductDetailsForm({ subcategoryId, onBack, onSubmit }) 
 
                   {field.type === 'radio' && (
                     <div className="flex flex-wrap gap-3">
-                      {field.options.map(opt => (
-                        <label key={opt} className={`flex items-center gap-2 cursor-pointer border rounded-[5px] py-2 px-4 transition-colors ${formData[field.id] === opt ? 'bg-blue-50 border-[#046BD2] text-[#046BD2]' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
-                          <input 
-                            type="radio" 
-                            name={field.id} 
-                            id={field.id} 
-                            value={opt} 
-                            checked={formData[field.id] === opt}
-                            onChange={handleChange}
-                            className="hidden"
-                          />
-                          <span className="text-[14px] font-medium">{opt}</span>
-                        </label>
-                      ))}
+                      {field.options.map(opt => {
+                        const isSelected = formData[field.key] === opt;
+                        return (
+                          <label 
+                             key={opt} 
+                             className={`relative flex items-center justify-center cursor-pointer border-2 rounded-lg py-2.5 px-5 font-medium text-[14px] transition-all duration-200 shadow-sm
+                             ${isSelected 
+                               ? 'bg-blue-50 border-[#046BD2] text-[#046BD2] ring-2 ring-blue-100' 
+                               : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'}`}
+                           >
+                            <input 
+                              type="radio" 
+                              name={field.key} 
+                              id={`${field.key}-${opt}`}
+                              value={opt} 
+                              checked={isSelected}
+                              onChange={handleChange}
+                              className="sr-only" // screen reader only to keep accessibility while hiding the ugly default dot
+                            />
+                            <span>{opt}</span>
+                            {isSelected && (
+                              <svg className="absolute -top-2 -right-2 w-5 h-5 bg-[#046BD2] text-white rounded-full p-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </label>
+                        );
+                      })}
                     </div>
                   )}
 
                   {field.type === 'number' && (
                     <Input 
-                      id={field.id}
+                      id={field.key}
+                      name={field.key}
                       type="number"
                       placeholder={`Enter ${field.label}`}
-                      value={formData[field.id]}
+                      value={formData[field.key] || ''}
                       onChange={handleChange}
                       required={field.required}
                     />

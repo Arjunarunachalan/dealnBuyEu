@@ -19,7 +19,7 @@ const COOKIE_OPTIONS = {
 // @access  Public
 export const registerUser = async (req, res) => {
   try {
-    const { username, email, password, country, authProvider } = req.body;
+    const { name, surname, pseudoName, email, password, country, authProvider } = req.body;
 
     // Encrypt email for DB lookup (deterministic so findOne works)
     const encryptedEmail = encryptField(email);
@@ -44,7 +44,7 @@ export const registerUser = async (req, res) => {
       sendMail({
         to: email,
         subject: "Your DealNBuy Verification Code",
-        html: getOtpEmailHtml(otp, username),
+        html: getOtpEmailHtml(otp, name),
       }).catch(err => console.error("OTP email resend failed:", err.message));
 
       return res.status(200).json({ message: "OTP resent to your email", email });
@@ -54,7 +54,9 @@ export const registerUser = async (req, res) => {
 
     // Encrypt sensitive fields before storing in DB (GDPR)
     const user = await User.create({
-      username: encryptField(username),
+      name: encryptField(name),
+      surname: encryptField(surname),
+      pseudoName: encryptField(pseudoName),
       email: encryptedEmail,
       password,
       country,
@@ -69,7 +71,7 @@ export const registerUser = async (req, res) => {
       sendMail({
         to: email,
         subject: "Welcome to DealNBuy – Verify Your Email",
-        html: getOtpEmailHtml(otp, username),
+        html: getOtpEmailHtml(otp, name),
       }).catch(err => console.error("OTP email failed:", err.message));
 
       res.status(201).json({ message: "Account created! Please check your email for the OTP.", email });
@@ -114,8 +116,11 @@ export const verifyOtp = async (req, res) => {
     // Send plain JSON (decrypt fields from DB before sending)
     res.status(200).json({
       _id: user._id,
-      username: decryptField(user.username),
+      name: decryptField(user.name),
+      surname: decryptField(user.surname),
+      pseudoName: decryptField(user.pseudoName),
       email: email,
+      role: user.role,
       accessToken,
       message: "Verification successful",
     });
@@ -207,7 +212,7 @@ export const forgotPassword = async (req, res) => {
     sendMail({
       to: email,
       subject: "DealNBuy – Password Reset Verification Code",
-      html: getOtpEmailHtml(otp, decryptField(user.username) || "User"),
+      html: getOtpEmailHtml(otp, decryptField(user.name) || "User"),
     }).catch(err => console.error("Forgot password OTP email failed:", err.message));
 
     return res.status(200).json({ message: "OTP sent to your email", email });
@@ -274,8 +279,11 @@ export const resetPassword = async (req, res) => {
 
     res.status(200).json({
       _id: user._id,
-      username: decryptField(user.username),
+      name: decryptField(user.name),
+      surname: decryptField(user.surname),
+      pseudoName: decryptField(user.pseudoName),
       email: email,
+      role: user.role,
       accessToken,
       message: "Password reset successful",
     });
@@ -316,8 +324,11 @@ export const loginUser = async (req, res) => {
 
       res.status(200).json({
         _id: user._id,
-        username: decryptField(user.username),
+        name: decryptField(user.name),
+        surname: decryptField(user.surname),
+        pseudoName: decryptField(user.pseudoName),
         email: email,
+        role: user.role,
         accessToken,
         message: "Login successful",
       });
