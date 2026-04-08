@@ -8,6 +8,8 @@ import authRoutes from "./routes/authRoutes.js";
 import adminRoutes from "./modules/admin/admin.routes.js";
 import { categoryPublicRouter, categoryAdminRouter } from "./modules/category/category.routes.js";
 import postRoutes from "./modules/post/post.routes.js";
+import passport from "passport";
+import "./config/passport.js";
 
 // Load env vars
 dotenv.config();
@@ -24,6 +26,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(cookieParser());
+app.use(passport.initialize());
 
 // Routes
 app.use("/api/items", itemRoutes);

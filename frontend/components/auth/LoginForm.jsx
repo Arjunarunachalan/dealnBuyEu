@@ -46,6 +46,10 @@ export default function LoginForm({ onToggleMode }) {
     setFormData({ ...formData, [e.target.id]: e.target.value });
   };
 
+  const handleGoogleAuth = () => {
+    window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/auth/google`;
+  };
+
   return (
     <div className="w-full">
       <h2 className="text-[#046BD2] text-[26px] font-bold mb-[25px]">DealNBuy</h2>
@@ -99,7 +103,7 @@ export default function LoginForm({ onToggleMode }) {
         <SocialLogin 
           provider="Google" 
           text="Sign up via Google" 
-          onClick={() => console.log('Google login')} 
+          onClick={handleGoogleAuth} 
         />
       </div>
     </div>

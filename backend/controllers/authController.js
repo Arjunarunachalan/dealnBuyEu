@@ -27,7 +27,7 @@ export const registerUser = async (req, res) => {
     const userExists = await User.findOne({ email: encryptedEmail });
 
     if (userExists) {
-      if (userExists.authProvider === "google" && (!authProvider || authProvider === "local")) {
+      if (!userExists.authProvider.includes("local")) {
         return res.status(400).json({ message: "Email registered via Google. Please use Google Login." });
       }
       if (userExists.isVerified) {
@@ -60,7 +60,7 @@ export const registerUser = async (req, res) => {
       email: encryptedEmail,
       password,
       country,
-      authProvider: authProvider || "local",
+      authProvider: authProvider ? [authProvider] : ["local"],
       otp,
       otpExpires: Date.now() + 10 * 60 * 1000,
       isVerified: false,
@@ -199,7 +199,7 @@ export const forgotPassword = async (req, res) => {
       return res.status(404).json({ message: "No account found with that email." });
     }
 
-    if (user.authProvider === "google") {
+    if (!user.authProvider.includes("local")) {
       return res.status(400).json({ message: "Account uses Google Login. Please use Google to sign in." });
     }
 
@@ -308,7 +308,7 @@ export const loginUser = async (req, res) => {
         return res.status(401).json({ message: "User not registered or verified. Please sign up." });
       }
 
-      if (user.authProvider === "google") {
+      if (!user.authProvider.includes("local")) {
         return res.status(400).json({ message: "Please log in using Google." });
       }
 
@@ -329,6 +329,8 @@ export const loginUser = async (req, res) => {
         pseudoName: decryptField(user.pseudoName),
         email: email,
         role: user.role,
+        country: user.country,
+        gdprAccepted: user.gdprAccepted || false,
         accessToken,
         message: "Login successful",
       });
@@ -337,6 +339,119 @@ export const loginUser = async (req, res) => {
     }
   } catch (error) {
     console.error("Login error:", error.message);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Google auth callback
+// @route   GET /api/auth/google/callback
+// @access  Public
+export const googleAuthCallback = async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.redirect(`${process.env.FRONTEND_URL || "http://localhost:3001"}/registration_login?error=Google_Auth_Failed`);
+    }
+
+    if (user.isNewGoogleUser) {
+      // 10 minute expiry short-lived securely signed token
+      const tempToken = jwt.sign(
+        { profile: user.profile },
+        process.env.JWT_ACCESS_SECRET || "access_secret",
+        { expiresIn: "10m" }
+      );
+      return res.redirect(`${process.env.FRONTEND_URL || "http://localhost:3001"}/register-google?token=${tempToken}`);
+    }
+
+    const accessToken = generateAccessToken(user._id);
+    const refreshTokenValue = generateRefreshToken(user._id);
+
+    user.refreshToken = refreshTokenValue;
+    await user.save({ validateModifiedOnly: true });
+
+    // Set refresh token as HTTP-only cookie
+    res.cookie("refreshToken", refreshTokenValue, COOKIE_OPTIONS);
+
+    const userData = {
+      _id: user._id,
+      name: decryptField(user.name),
+      surname: decryptField(user.surname),
+      pseudoName: decryptField(user.pseudoName),
+      email: decryptField(user.email),
+      role: user.role,
+      country: user.country,
+      gdprAccepted: user.gdprAccepted || false,
+    };
+
+    const userDataEncoded = encodeURIComponent(JSON.stringify(userData));
+
+    res.redirect(`${process.env.FRONTEND_URL || "http://localhost:3001"}/auth-success?accessToken=${accessToken}&user=${userDataEncoded}`);
+  } catch (error) {
+    console.error("Google Callback error:", error.message);
+    res.redirect(`${process.env.FRONTEND_URL || "http://localhost:3001"}/registration_login?error=Internal_Error`);
+  }
+};
+
+// @desc    Complete explicit Google Registration
+// @route   POST /api/auth/google-register
+// @access  Public
+export const registerGoogleUser = async (req, res) => {
+  try {
+    const { token, country, gdprAccepted } = req.body;
+    
+    if (!token || !country || gdprAccepted !== true) {
+      return res.status(400).json({ message: "Incomplete details. Metadata required." });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET || "access_secret");
+    } catch (err) {
+      return res.status(400).json({ message: "Invalid or expired Google Signup Session." });
+    }
+
+    const { profile } = decoded;
+
+    // Determine if someone bypassed or doubled hit
+    const userExists = await User.findOne({ email: profile.email });
+    if (userExists) {
+      return res.status(400).json({ message: "Google User explicitly already established." });
+    }
+
+    const newUser = await User.create({
+      name: profile.name,
+      surname: profile.surname,
+      pseudoName: profile.pseudoName,
+      email: profile.email,
+      googleId: profile.googleId,
+      country,
+      gdprAccepted: true,
+      authProvider: ["google"],
+      isVerified: true
+    });
+
+    const accessToken = generateAccessToken(newUser._id);
+    const refreshTokenValue = generateRefreshToken(newUser._id);
+
+    newUser.refreshToken = refreshTokenValue;
+    await newUser.save({ validateModifiedOnly: true });
+
+    res.cookie("refreshToken", refreshTokenValue, COOKIE_OPTIONS);
+
+    res.status(201).json({
+      _id: newUser._id,
+      name: decryptField(newUser.name),
+      surname: decryptField(newUser.surname),
+      pseudoName: decryptField(newUser.pseudoName),
+      email: decryptField(newUser.email),
+      role: newUser.role,
+      country: newUser.country,
+      gdprAccepted: newUser.gdprAccepted,
+      accessToken,
+      message: "Google Secure Registry verified successfully"
+    });
+  } catch (error) {
+    console.error("Google Registration error:", error.message);
     res.status(500).json({ message: error.message });
   }
 };

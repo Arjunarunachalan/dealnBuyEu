@@ -22,7 +22,6 @@ const userSchema = mongoose.Schema(
     },
     password: {
       type: String,
-      required: true,
     },
     country: {
       type: String,
@@ -39,10 +38,13 @@ const userSchema = mongoose.Schema(
     otpExpires: {
       type: Date,
     },
-    authProvider: {
+    authProvider: [{
       type: String,
       enum: ["local", "google"],
       default: "local",
+    }],
+    googleId: {
+      type: String,
     },
     refreshToken: {
       type: String,
@@ -55,6 +57,10 @@ const userSchema = mongoose.Schema(
     isActive: {
       type: Boolean,
       default: true,
+    },
+    gdprAccepted: {
+      type: Boolean,
+      default: false,
     },
   },
   {

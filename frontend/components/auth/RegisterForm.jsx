@@ -98,6 +98,11 @@ export default function RegisterForm({ onToggleMode }) {
 
   const isStep1Valid = formData.termsAccepted && formData.gdprAccepted;
 
+  const handleGoogleAuth = (e) => {
+    e.preventDefault();
+    router.push('/pre-google-consent');
+  };
+
   return (
     <div className="w-full relative">
       {step > 0 && (
@@ -250,7 +255,7 @@ export default function RegisterForm({ onToggleMode }) {
             <SocialLogin 
               provider="Google" 
               text="Sign up via Google" 
-              onClick={() => console.log('Google signup')} 
+              onClick={handleGoogleAuth} 
             />
           </div>
         </div>
