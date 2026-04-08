@@ -16,7 +16,7 @@ export const createPostHandler = async (req, res) => {
       });
     }
 
-    const post = await createPost(req.body, userId);
+    const post = await createPost({ ...req.body, country: req.country }, userId);
 
     return res.status(201).json({
       success: true,
@@ -37,8 +37,8 @@ export const createPostHandler = async (req, res) => {
  */
 export const getPostsHandler = async (req, res) => {
   try {
-    // Extract everything from req.query and pass to the service
-    const result = await getPosts(req.query);
+    // Extract everything from req.query and pass to the service, injecting required country
+    const result = await getPosts({ ...req.query, country: req.country });
 
     return res.status(200).json({
       success: true,

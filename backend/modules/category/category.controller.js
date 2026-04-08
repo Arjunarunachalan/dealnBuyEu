@@ -21,7 +21,7 @@ export const createCategoryHandler = async (req, res) => {
       });
     }
 
-    const category = await createCategory({ name, parentId, icon, order });
+    const category = await createCategory({ name, parentId, icon, order, country: req.country });
 
     return res.status(201).json({
       success: true,
@@ -41,7 +41,7 @@ export const createCategoryHandler = async (req, res) => {
 // ─────────────────────────────────────────────
 export const getCategoriesHandler = async (req, res) => {
   try {
-    const tree = await getCategoryTree();
+    const tree = await getCategoryTree(req.country);
 
     return res.status(200).json({
       success: true,
@@ -77,6 +77,7 @@ export const updateCategoryHandler = async (req, res) => {
       icon,
       order,
       isActive,
+      country: req.country,
     });
 
     return res.status(200).json({
@@ -98,7 +99,7 @@ export const updateCategoryHandler = async (req, res) => {
 export const toggleCategoryStatusHandler = async (req, res) => {
   try {
     const { id } = req.params;
-    const updated = await toggleCategoryStatus(id);
+    const updated = await toggleCategoryStatus(id, req.country);
 
     return res.status(200).json({
       success: true,
@@ -128,7 +129,7 @@ export const updateCategoryAttributesHandler = async (req, res) => {
       });
     }
 
-    const updated = await updateCategoryAttributes(id, attributes);
+    const updated = await updateCategoryAttributes(id, attributes, req.country);
 
     return res.status(200).json({
       success: true,
@@ -149,7 +150,7 @@ export const updateCategoryAttributesHandler = async (req, res) => {
 export const getCategoryFiltersHandler = async (req, res) => {
   try {
     const { id } = req.params;
-    const filters = await getCategoryFilters(id);
+    const filters = await getCategoryFilters(id, req.country);
 
     return res.status(200).json({
       success: true,

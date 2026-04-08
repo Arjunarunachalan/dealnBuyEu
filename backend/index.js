@@ -10,6 +10,7 @@ import { categoryPublicRouter, categoryAdminRouter } from "./modules/category/ca
 import postRoutes from "./modules/post/post.routes.js";
 import passport from "passport";
 import "./config/passport.js";
+import { countryGateway } from "./middleware/countryGateway.js";
 
 // Load env vars
 dotenv.config();
@@ -27,6 +28,9 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 app.use(passport.initialize());
+
+// Apply Gateway to ALL routes to strictly enforce country architecture
+app.use("/api", countryGateway);
 
 // Routes
 app.use("/api/items", itemRoutes);

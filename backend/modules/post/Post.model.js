@@ -54,6 +54,10 @@ const postSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    country: {
+      type: String,
+      required: [true, "Country code is required"],
+    },
   },
   {
     timestamps: true,
@@ -61,6 +65,7 @@ const postSchema = new mongoose.Schema(
 );
 
 // Indexes
+postSchema.index({ country: 1, isActive: 1 }); // Main querying index
 postSchema.index({ categoryPath: 1 });
 postSchema.index({ price: 1 });
 postSchema.index({ userId: 1 });

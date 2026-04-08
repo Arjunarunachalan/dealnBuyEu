@@ -24,13 +24,15 @@ const toBaseSlug = (name) =>
  * @param {string|null} excludeId - Category _id to exclude (for updates)
  * @returns {Promise<string>} unique slug
  */
-export const generateUniqueSlug = async (name, excludeId = null) => {
+export const generateUniqueSlug = async (name, country, excludeId = null) => {
+  if (!country) throw new Error("Country is required to generate unique slug.");
+  
   const base = toBaseSlug(name);
   let slug = base;
   let counter = 0;
 
   while (true) {
-    const query = { slug };
+    const query = { slug, country };
     if (excludeId) query._id = { $ne: excludeId };
 
     const exists = await Category.findOne(query).lean();
@@ -101,11 +103,13 @@ const isCircularParent = async (categoryId, proposedParentId) => {
  * @param {string|null} excludeId - exclude self when updating
  * @returns {Promise<boolean>}
  */
-const isDuplicateName = async (name, parentId, excludeId = null) => {
+const isDuplicateName = async (name, parentId, country, excludeId = null) => {
+  if (!country) throw new Error("Country is required for duplicate check.");
   const query = {
     name: { $regex: `^${name.trim()}$`, $options: "i" },
     parentId: parentId || null,
     isDeleted: false,
+    country,
   };
   if (excludeId) query._id = { $ne: excludeId };
 
@@ -124,11 +128,13 @@ const isDuplicateName = async (name, parentId, excludeId = null) => {
  * @param {{ name: string, parentId?: string, icon?: string, order?: number }} data
  * @returns {Promise<Category>}
  */
-export const createCategory = async ({ name, parentId = null, icon = "Tag", order = 0 }) => {
+export const createCategory = async ({ name, parentId = null, icon = "Tag", order = 0, country }) => {
+  if (!country) throw new Error("Country is required to create category.");
+
   // 1. Resolve parent and calculate level
   let level = 0;
   if (parentId) {
-    const parent = await Category.findById(parentId).lean();
+    const parent = await Category.findOne({ _id: parentId, country }).lean();
     if (!parent || parent.isDeleted) {
       const err = new Error("Parent category not found.");
       err.statusCode = 404;
@@ -138,7 +144,7 @@ export const createCategory = async ({ name, parentId = null, icon = "Tag", orde
   }
 
   // 2. Duplicate name check under same parent
-  const dup = await isDuplicateName(name, parentId);
+  const dup = await isDuplicateName(name, parentId, country);
   if (dup) {
     const err = new Error(
       `A category named "${name}" already exists under this parent.`
@@ -148,7 +154,7 @@ export const createCategory = async ({ name, parentId = null, icon = "Tag", orde
   }
 
   // 3. Generate unique slug
-  const slug = await generateUniqueSlug(name);
+  const slug = await generateUniqueSlug(name, country);
 
   // 4. Create
   const category = await Category.create({
@@ -158,6 +164,7 @@ export const createCategory = async ({ name, parentId = null, icon = "Tag", orde
     level,
     icon,
     order,
+    country,
   });
 
   return category;
@@ -170,8 +177,9 @@ export const createCategory = async ({ name, parentId = null, icon = "Tag", orde
  *
  * @returns {Promise<Array>} - Root-level categories with nested children
  */
-export const getCategoryTree = async () => {
-  const categories = await Category.find({ isActive: true, isDeleted: false })
+export const getCategoryTree = async (country) => {
+  if (!country) throw new Error("Country is required to fetch tree.");
+  const categories = await Category.find({ isActive: true, isDeleted: false, country })
     .sort({ order: 1, createdAt: 1 })
     .lean();
 
@@ -208,14 +216,15 @@ export const getCategoryTree = async () => {
  * @returns {Promise<Category>}
  */
 export const updateCategory = async (id, data) => {
-  const category = await Category.findById(id);
+  const { name, parentId, icon, order, isActive, country } = data;
+  if (!country) throw new Error("Country is required for update.");
+
+  const category = await Category.findOne({ _id: id, country });
   if (!category || category.isDeleted) {
-    const err = new Error("Category not found.");
+    const err = new Error("Category not found or access denied.");
     err.statusCode = 404;
     throw err;
   }
-
-  const { name, parentId, icon, order, isActive } = data;
 
   // Determine final parentId (may or may not be changing)
   const newParentId =
@@ -251,7 +260,7 @@ export const updateCategory = async (id, data) => {
   let newLevel = category.level;
   if (parentChanging) {
     if (newParentId) {
-      const newParent = await Category.findById(newParentId).lean();
+      const newParent = await Category.findOne({ _id: newParentId, country }).lean();
       if (!newParent || newParent.isDeleted) {
         const err = new Error("New parent category not found.");
         err.statusCode = 404;
@@ -269,7 +278,7 @@ export const updateCategory = async (id, data) => {
 
   if (nameChanging || parentChanging) {
     const targetParentId = parentChanging ? newParentId : newParentId;
-    const dup = await isDuplicateName(effectiveName, targetParentId, id);
+    const dup = await isDuplicateName(effectiveName, targetParentId, country, id);
     if (dup) {
       const err = new Error(
         `A category named "${effectiveName}" already exists under this parent.`
@@ -282,7 +291,7 @@ export const updateCategory = async (id, data) => {
   // ── Regenerate slug if name changed ───────────────────────────────────
   if (nameChanging) {
     category.name = name.trim();
-    category.slug = await generateUniqueSlug(name, id);
+    category.slug = await generateUniqueSlug(name, country, id);
   }
 
   // ── Apply field updates ───────────────────────────────────────────────
@@ -311,10 +320,11 @@ export const updateCategory = async (id, data) => {
  * @param {string} id
  * @returns {Promise<Category>}
  */
-export const toggleCategoryStatus = async (id) => {
-  const category = await Category.findById(id);
+export const toggleCategoryStatus = async (id, country) => {
+  if (!country) throw new Error("Country is required to toggle status.");
+  const category = await Category.findOne({ _id: id, country });
   if (!category || category.isDeleted) {
-    const err = new Error("Category not found.");
+    const err = new Error("Category not found or access denied.");
     err.statusCode = 404;
     throw err;
   }
@@ -357,11 +367,12 @@ export const getCategoryPath = async (categoryId) => {
  * @param {Array} attributes
  * @returns {Promise<Category>}
  */
-export const updateCategoryAttributes = async (categoryId, attributes) => {
+export const updateCategoryAttributes = async (categoryId, attributes, country) => {
+  if (!country) throw new Error("Country is required to update attributes.");
   // Check if it exists
-  const category = await Category.findById(categoryId);
+  const category = await Category.findOne({ _id: categoryId, country });
   if (!category || category.isDeleted) {
-    const err = new Error("Category not found.");
+    const err = new Error("Category not found or access denied.");
     err.statusCode = 404;
     throw err;
   }
@@ -411,13 +422,14 @@ export const updateCategoryAttributes = async (categoryId, attributes) => {
  * @param {string} categoryId
  * @returns {Promise<Object>}
  */
-export const getCategoryFilters = async (categoryId) => {
-  const category = await Category.findById(categoryId)
+export const getCategoryFilters = async (categoryId, country) => {
+  if (!country) throw new Error("Country is required to fetch filters.");
+  const category = await Category.findOne({ _id: categoryId, country })
     .select("attributes")
     .lean();
 
   if (!category) {
-    const err = new Error("Category not found.");
+    const err = new Error("Category not found or access denied.");
     err.statusCode = 404;
     throw err;
   }
