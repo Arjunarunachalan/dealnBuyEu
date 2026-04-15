@@ -15,6 +15,10 @@ const itemSchema = mongoose.Schema(
       required: true,
       default: 0,
     },
+    country: {
+      type: String,
+      required: true,
+    },
   },
   {
     timestamps: true,

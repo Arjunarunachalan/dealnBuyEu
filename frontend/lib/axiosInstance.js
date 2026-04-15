@@ -1,6 +1,13 @@
 import axios from "axios";
 import { useAuthStore } from "../store/useAuthStore";
 
+const getCookie = (name) => {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
+  if (match) return match[2];
+  return null;
+};
+
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api",
   headers: {
@@ -9,13 +16,19 @@ const api = axios.create({
   withCredentials: true, // Send cookies (refresh token) automatically
 });
 
-// Request Interceptor: Attach access token
+// Request Interceptor: Attach access token and strict country metadata
 api.interceptors.request.use(
   (config) => {
     if (typeof window !== "undefined") {
       const accessToken = useAuthStore.getState().accessToken || localStorage.getItem("accessToken");
       if (accessToken) {
         config.headers.Authorization = `Bearer ${accessToken}`;
+      }
+
+      // Automatically attach isolated market context to each hit
+      const countryCode = getCookie("country_market");
+      if (countryCode) {
+        config.headers["x-country-code"] = countryCode;
       }
     }
     return config;

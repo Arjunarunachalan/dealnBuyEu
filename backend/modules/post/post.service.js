@@ -124,8 +124,15 @@ const buildSortQuery = (sortOption) => {
  * Constructs scalable MongoDB db queries tracking schema bindings precisely
  */
 const buildFilterQuery = (queryParams, category) => {
-  const { categoryId, categorySlug, minPrice, maxPrice, ...dynamicParams } = queryParams;
+  const { categoryId, categorySlug, minPrice, maxPrice, country, ...dynamicParams } = queryParams;
   const dbQuery = { isActive: true };
+
+  // Explicit Strict Country Enforcement
+  if (country) {
+    dbQuery.country = country;
+  } else {
+    throw new Error("Strict architecture error: country is required for queries.");
+  }
 
   // Category specific paths match all descendants smoothly without manual loop
   if (categoryId) {
@@ -190,7 +197,11 @@ const buildFilterQuery = (queryParams, category) => {
 // ─────────────────────────────────────────────
 
 export const createPost = async (postData, userId) => {
-  const { title, description, price, categoryId, attributes = {}, images, location } = postData;
+  const { title, description, price, categoryId, attributes = {}, images, location, country } = postData;
+
+  if (!country) {
+    throw new Error("Strict architecture error: country is required for creation.");
+  }
 
   // 1. Core Fields Sanity validation (Basic explicit blocks)
   const normTitle = (title || "").trim();
@@ -242,6 +253,7 @@ export const createPost = async (postData, userId) => {
     location: location || {},
     userId,
     isActive: true,
+    country,
   });
 
   return post;

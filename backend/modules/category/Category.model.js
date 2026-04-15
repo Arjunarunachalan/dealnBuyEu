@@ -10,7 +10,6 @@ const categorySchema = new mongoose.Schema(
     slug: {
       type: String,
       required: true,
-      unique: true,
       trim: true,
       lowercase: true,
     },
@@ -75,6 +74,10 @@ const categorySchema = new mongoose.Schema(
         },
       },
     ],
+    country: {
+      type: String,
+      required: [true, "Country code is required"],
+    },
   },
   {
     timestamps: true,
@@ -82,6 +85,8 @@ const categorySchema = new mongoose.Schema(
 );
 
 // --- Indexes ---
+categorySchema.index({ slug: 1, country: 1 }, { unique: true });
+categorySchema.index({ country: 1, parentId: 1 });
 categorySchema.index({ parentId: 1 });
 categorySchema.index({ slug: 1 });
 categorySchema.index({ isActive: 1, isDeleted: 1 }); // compound for tree queries
