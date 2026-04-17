@@ -3,7 +3,6 @@ import { registerUser, verifyOtp, refreshToken, logoutUser, loginUser, forgotPas
 import passport from "passport";
 
 const router = express.Router();
-
 router.post("/register", registerUser);
 router.post("/login", loginUser);
 router.post("/verify-otp", verifyOtp);
