@@ -2,6 +2,13 @@ import { Star, MapPin } from 'lucide-react';
 import Link from 'next/link';
 
 export default function ProductCard({ id, title, price, location, badge, rating, imageUrl }) {
+  const isValidImage = imageUrl && typeof imageUrl === 'string' && !imageUrl.startsWith('blob:');
+  const finalImageUrl = isValidImage ? imageUrl : 'https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&q=80&w=400';
+  
+  const displayTitle = title ? title.charAt(0).toUpperCase() + title.slice(1) : '';
+  const displayLocation = location ? 
+    location.split(/[\s,]+/).map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(', ') 
+    : '';
   // Render stars
   const stars = [];
   for (let i = 0; i < 5; i++) {
@@ -28,7 +35,7 @@ export default function ProductCard({ id, title, price, location, badge, rating,
       <div className="relative aspect-[4/3] bg-gray-100 flex-shrink-0">
         <div 
           className="w-full h-full bg-cover bg-center transition-transform group-hover:scale-105 duration-300"
-          style={{ backgroundImage: `url('${imageUrl}')` }}
+          style={{ backgroundImage: `url('${finalImageUrl}')` }}
         />
         
         {badge && (
@@ -40,13 +47,13 @@ export default function ProductCard({ id, title, price, location, badge, rating,
 
       {/* Content */}
       <div className="p-4 flex flex-col flex-grow">
-        <div className="flex items-center text-gray-500 text-[11px] mb-2 uppercase tracking-wide font-medium">
+        <div className="flex items-center text-gray-500 text-[11px] mb-2 font-semibold tracking-wide">
           <MapPin size={12} className="mr-1" />
-          {location}
+          {displayLocation}
         </div>
         
         <h4 className="font-semibold text-[#1A1A1A] text-[15px] leading-snug mb-3 line-clamp-2 min-h-[44px] group-hover:text-[#046BD2] transition-colors">
-          {title}
+          {displayTitle}
         </h4>
         
         <div className="mt-auto">

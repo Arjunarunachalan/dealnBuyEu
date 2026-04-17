@@ -1,6 +1,7 @@
 import Post from "./Post.model.js";
 import Category from "../category/Category.model.js";
 import { getCategoryPath } from "../category/category.service.js";
+import { decryptField } from "../../utils/fieldEncryption.js";
 
 // ─────────────────────────────────────────────
 // HIGHER ORDER HELPERS
@@ -300,4 +301,36 @@ export const getPosts = async (queryParams) => {
     page,
     totalPages: Math.ceil(total / limit)
   };
+};
+
+export const getPostById = async (id, country) => {
+  if (!country) {
+    throw new Error("Strict architecture error: country context is required.");
+  }
+
+  const post = await Post.findOne({ _id: id, country, isActive: true })
+    .populate("categoryId", "name slug icon")
+    .populate("userId", "name surname pseudoName createdAt country avatar productsCount") // Safety populate
+    .lean();
+
+  if (!post) {
+    const err = new Error("Post not found or unavailable in this region.");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  // Populate dynamic product counts safely (just as a helper if needed later)
+  post.sellerProductsCount = await Post.countDocuments({ userId: post.userId._id, isActive: true, country });
+
+  if (post.userId) {
+    const safeDecrypt = (value) => {
+      if (!value) return "";
+      try { return decryptField(value); } catch { return value; }
+    };
+    post.userId.name = safeDecrypt(post.userId.name);
+    post.userId.surname = safeDecrypt(post.userId.surname);
+    post.userId.pseudoName = safeDecrypt(post.userId.pseudoName);
+  }
+
+  return post;
 };

@@ -1,4 +1,4 @@
-import { createPost, getPosts } from "./post.service.js";
+import { createPost, getPosts, getPostById } from "./post.service.js";
 
 /**
  * createPostHandler
@@ -54,6 +54,26 @@ export const getPostsHandler = async (req, res) => {
     return res.status(err.statusCode || 500).json({
       success: false,
       message: err.message || "Failed to fetch posts.",
+    });
+  }
+};
+
+/**
+ * getPostByIdHandler
+ * Handles GET /api/posts/:id requests.
+ */
+export const getPostByIdHandler = async (req, res) => {
+  try {
+    const post = await getPostById(req.params.id, req.country);
+    
+    return res.status(200).json({
+      success: true,
+      data: post,
+    });
+  } catch (err) {
+    return res.status(err.statusCode || 500).json({
+      success: false,
+      message: err.message || "Failed to fetch post.",
     });
   }
 };

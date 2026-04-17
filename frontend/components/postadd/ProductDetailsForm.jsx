@@ -5,8 +5,11 @@ import { dummyDynamicFieldsOptions } from '../../lib/dummyCategories';
 import Input from '../ui/Input';
 import Button from '../ui/Button';
 import { ImagePlus, MapPin, Tag } from 'lucide-react';
+import { useAuthStore } from '../../store/useAuthStore';
+import LocationInput from './LocationInput';
 
 export default function ProductDetailsForm({ categories, subcategoryId, onBack, onSubmit }) {
+  const { user } = useAuthStore();
   
   // Recursively find the selected leaf category to get its dynamic attributes
   const dynamicFields = (() => {
@@ -43,12 +46,16 @@ export default function ProductDetailsForm({ categories, subcategoryId, onBack, 
     }));
   };
 
-  const handleImageUpload = (e) => {
-    // Dummy image upload logic just sets generic names
+  const handleImageUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length > 0) {
-      const newImages = files.map(file => URL.createObjectURL(file));
-      setImages((prev) => [...prev, ...newImages].slice(0, 5)); // Limit to 5
+      const base64Promises = files.map(file => new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(file);
+      }));
+      const base64Images = await Promise.all(base64Promises);
+      setImages((prev) => [...prev, ...base64Images].slice(0, 5)); // Limit to 5
     }
   };
 
@@ -215,11 +222,12 @@ export default function ProductDetailsForm({ categories, subcategoryId, onBack, 
               <h3 className="text-[16px] font-semibold text-[#333333] border-b pb-3 mb-5 flex items-center gap-2">
                 <MapPin size={18} className="text-[#046BD2]" /> Confirm your location
               </h3>
-              <Input 
+              <LocationInput 
                 id="location"
                 placeholder="City, Neighborhood or Zip"
                 value={formData.location}
-                onChange={handleChange}
+                onChange={(val) => setFormData(prev => ({ ...prev, location: val }))}
+                countryCode={user?.country}
                 required
               />
             </div>

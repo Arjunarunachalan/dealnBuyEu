@@ -47,11 +47,20 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
+        const countryCode = getCookie("country_market");
+        const headers = {};
+        if (countryCode) {
+          headers["x-country-code"] = countryCode;
+        }
+
         // Cookie is sent automatically due to withCredentials
         const refreshRes = await axios.post(
           `${api.defaults.baseURL}/auth/refresh-token`,
           {},
-          { withCredentials: true }
+          { 
+            withCredentials: true,
+            headers 
+          }
         );
 
         if (refreshRes.data?.accessToken) {

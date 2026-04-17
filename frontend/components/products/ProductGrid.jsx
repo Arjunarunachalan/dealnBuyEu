@@ -1,81 +1,28 @@
-import ProductCard from './ProductCard';
+'use client';
 
-const dummyProducts = [
-  {
-    id: 1,
-    title: "Yamaha R15 V4 Racing Blue",
-    price: "₹ 1,85,000",
-    location: "Kochi, Kerala",
-    badge: "Verified Seller",
-    rating: 5,
-    imageUrl: "https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&q=80&w=400",
-  },
-  {
-    id: 2,
-    title: "MacBook Pro M2 - Space Gray",
-    price: "₹ 1,20,000",
-    location: "Ernakulam, Kerala",
-    badge: "Featured",
-    rating: 4,
-    imageUrl: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&q=80&w=400",
-  },
-  {
-    id: 3,
-    title: "Sony Alpha a7 III Mirrorless Camera",
-    price: "₹ 1,15,000",
-    location: "Trivandrum, Kerala",
-    badge: "Recommended",
-    rating: 5,
-    imageUrl: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=400",
-  },
-  {
-    id: 4,
-    title: "Royal Enfield Classic 350",
-    price: "₹ 1,90,000",
-    location: "Kozhikode, Kerala",
-    badge: "Verified Seller",
-    rating: 4,
-    imageUrl: "https://images.unsplash.com/photo-1629859586419-4820dc7fc148?auto=format&fit=crop&q=80&w=400",
-  },
-  {
-    id: 5,
-    title: "Apple iPhone 14 Pro Max 256GB",
-    price: "₹ 1,10,000",
-    location: "Thrissur, Kerala",
-    badge: "Featured",
-    rating: 5,
-    imageUrl: "https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?auto=format&fit=crop&q=80&w=400",
-  },
-  {
-    id: 6,
-    title: "Samsung 55-inch 4K Smart TV",
-    price: "₹ 45,000",
-    location: "Kochi, Kerala",
-    badge: "",
-    rating: 3,
-    imageUrl: "https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?auto=format&fit=crop&q=80&w=400",
-  },
-  {
-    id: 7,
-    title: "Maruti Suzuki Swift VXI 2021",
-    price: "₹ 6,50,000",
-    location: "Ernakulam, Kerala",
-    badge: "Recommended",
-    rating: 4,
-    imageUrl: "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=400",
-  },
-  {
-    id: 8,
-    title: "Dell XPS 13 Laptop i7 16GB",
-    price: "₹ 85,000",
-    location: "Kottayam, Kerala",
-    badge: "Verified Seller",
-    rating: 5,
-    imageUrl: "https://images.unsplash.com/photo-1593642632823-8f785ba67e45?auto=format&fit=crop&q=80&w=400",
-  }
-];
+import { useState, useEffect } from 'react';
+import ProductCard from './ProductCard';
+import api from '../../lib/axiosInstance';
+import { Loader2 } from 'lucide-react';
 
 export default function ProductGrid() {
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchLatest = async () => {
+      try {
+        const { data } = await api.get('/posts?limit=8');
+        setPosts(data?.data?.posts || []);
+      } catch (err) {
+        console.error("Failed to fetch fresh posts", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLatest();
+  }, []);
+
   return (
     <section className="w-full bg-[#F3F4F6] py-12">
       <div className="max-w-[1240px] mx-auto px-4">
@@ -83,11 +30,30 @@ export default function ProductGrid() {
           Fresh Recommendations
         </h3>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {dummyProducts.map(product => (
-            <ProductCard key={product.id} {...product} />
-          ))}
-        </div>
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="animate-spin text-[#046BD2]" size={36} />
+          </div>
+        ) : posts.length === 0 ? (
+          <div className="text-center bg-white border border-gray-100 rounded-lg py-16 px-4 shadow-sm text-gray-500 font-medium">
+            No recent listings available yet in your local market. Check back soon.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {posts.map(post => (
+              <ProductCard 
+                key={post._id}
+                id={post._id}
+                title={post.title}
+                price={`€ ${post.price.toLocaleString()}`}
+                location={post.location?.city || 'Local Pickup'}
+                badge={post.isFeatured ? "Featured" : ""}
+                rating={5}
+                imageUrl={post.images?.[0]}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
