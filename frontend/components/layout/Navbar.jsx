@@ -107,12 +107,12 @@ export default function Navbar() {
                 1
               </span>
             </button>
-            <button className="text-gray-600 hover:text-[#046BD2] transition-colors relative">
+            <Link href="/notifications" className="text-gray-600 hover:text-[#046BD2] transition-colors relative">
               <Bell size={24} />
               <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
                 2
               </span>
-            </button>
+            </Link>
 
             {isLoggedIn ? (
               <div className="relative group cursor-pointer z-[100]">
@@ -128,19 +128,47 @@ export default function Navbar() {
                     )}
                   </div>
                 </div>
-                <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 shadow-lg rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100]">
-                  <div className="py-2">
-                    <Link href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">My Profile</Link>
-                    <Link href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">My Ads</Link>
-                    <Link href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Messages</Link>
-                    <Link href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Saved/Likes</Link>
-                    <div className="border-t border-gray-100 my-1" />
-                    <button
-                      onClick={logout}
-                      className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-                    >
-                      Logout
-                    </button>
+                <div className="absolute right-1 top-full mt-4 w-56 bg-white border border-gray-100 shadow-xl rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100]">
+                  {/* Small upward pointing arrow */}
+                  <div className="absolute -top-2 right-3 w-4 h-4 bg-white rotate-45 border-l border-t border-gray-100"></div>
+                  
+                  <div className="flex flex-col relative z-10 bg-white rounded-lg">
+                    {/* Header */}
+                    <div className="flex items-center p-3 border-b border-gray-200">
+                      <div
+                        className="w-10 h-10 rounded-full border border-gray-300 flex items-center justify-center overflow-hidden text-white text-base font-bold"
+                        style={{ backgroundColor: getBgColor(user?.name) }}
+                      >
+                        {user?.profilePic ? (
+                          <img src={user.profilePic} alt="Profile" className="w-full h-full object-cover" />
+                        ) : (
+                          getInitials(user?.name)
+                        )}
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-[11px] text-black font-bold">Welcome Back</p>
+                        <p className="text-[15px] font-bold text-black leading-tight">{user?.name || 'User'}</p>
+                      </div>
+                    </div>
+
+                    {/* Links */}
+                    <div className="flex flex-col">
+                      <Link href="/myads" className="px-4 py-2.5 text-[14px] font-medium text-gray-800 hover:bg-gray-50 border-b border-gray-200">My Ads</Link>
+                      <Link href="/postadd" className="px-4 py-2.5 text-[14px] font-medium text-gray-800 hover:bg-gray-50 border-b border-gray-200">Add Advertisement</Link>
+                      <Link href="/subscription" className="px-4 py-2.5 text-[14px] font-medium text-gray-800 hover:bg-gray-50 border-b border-gray-200">Subscription Plans</Link>
+                      <Link href="/wishlist" className="flex justify-between items-center px-4 py-2.5 text-[14px] font-medium text-gray-800 hover:bg-gray-50 border-b border-gray-200">
+                        <span>My Wishlist</span>
+                        <span className="bg-[#046BD2] text-white text-[11px] font-bold w-5 h-5 rounded-full flex items-center justify-center">3</span>
+                      </Link>
+                      <Link href="/profile" className="px-4 py-2.5 text-[14px] font-medium text-gray-800 hover:bg-gray-50 border-b border-gray-200">My Account</Link>
+                      <Link href="/refer" className="px-4 py-2.5 text-[14px] font-medium text-gray-800 hover:bg-gray-50 border-b border-gray-200">Refer a Friend</Link>
+                      <button
+                        onClick={logout}
+                        className="w-full text-left px-4 py-2.5 text-[14px] font-medium text-gray-800 hover:bg-gray-50 rounded-b-lg"
+                      >
+                        Logout
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -225,7 +253,7 @@ export default function Navbar() {
                 <span className="flex-1 font-medium text-[15px]">Chats</span>
                 <span className="bg-red-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-full">1</span>
               </Link>
-              <Link href="#" className="flex items-center text-gray-700 p-2 sm:p-3 hover:bg-gray-50 rounded-md transition-colors">
+              <Link href="/notifications" className="flex items-center text-gray-700 p-2 sm:p-3 hover:bg-gray-50 rounded-md transition-colors">
                 <Bell size={22} className="mr-3 text-[#046BD2]" />
                 <span className="flex-1 font-medium text-[15px]">Notifications</span>
                 <span className="bg-red-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-full">2</span>
@@ -237,7 +265,7 @@ export default function Navbar() {
                     <User size={22} className="mr-3 text-[#046BD2]" />
                     <span className="font-medium text-[15px]">My Profile</span>
                   </Link>
-                  <Link href="#" className="flex items-center text-gray-700 p-2 sm:p-3 hover:bg-gray-50 rounded-md transition-colors">
+                  <Link href="/myads" className="flex items-center text-gray-700 p-2 sm:p-3 hover:bg-gray-50 rounded-md transition-colors">
                     <PlusCircle size={22} className="mr-3 text-[#046BD2]" />
                     <span className="font-medium text-[15px]">My Ads</span>
                   </Link>
