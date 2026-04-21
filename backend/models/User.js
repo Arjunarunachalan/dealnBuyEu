@@ -23,6 +23,12 @@ const userSchema = mongoose.Schema(
     password: {
       type: String,
     },
+    phone: {
+      type: String,
+    },
+    location: {
+      type: String,
+    },
     country: {
       type: String,
       required: true,
