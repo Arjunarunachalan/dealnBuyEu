@@ -193,6 +193,7 @@ export default function SubscriptionPage() {
 
                 {/* Primary CTA */}
                 <button 
+                  suppressHydrationWarning
                   className={`w-full font-bold py-3.5 rounded-xl flex justify-center items-center transition-all duration-300 shadow-sm
                     ${plan.status === 'active' 
                       ? 'bg-[#10B981] text-white hover:bg-[#059669] hover:shadow-md' 

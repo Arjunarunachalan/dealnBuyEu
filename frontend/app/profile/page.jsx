@@ -97,6 +97,7 @@ export default function ProfilePage() {
               
               {!isEditing ? (
                 <button 
+                  suppressHydrationWarning
                   onClick={() => setIsEditing(true)}
                   className="flex items-center text-[#046BD2] hover:text-white hover:bg-[#046BD2] font-semibold bg-blue-50 px-5 py-2.5 border border-blue-100 hover:border-[#046BD2] rounded-xl transition-all duration-300 shadow-sm"
                 >
@@ -105,6 +106,7 @@ export default function ProfilePage() {
               ) : (
                 <div className="flex gap-3">
                   <button 
+                    suppressHydrationWarning
                     onClick={() => setIsEditing(false)}
                     disabled={isSaving}
                     className="flex items-center text-gray-500 hover:text-gray-700 font-semibold bg-gray-50 px-4 py-2.5 border border-gray-200 rounded-xl transition-all duration-300"
@@ -112,6 +114,7 @@ export default function ProfilePage() {
                     <X size={16} className="mr-1.5" /> Cancel
                   </button>
                   <button 
+                    suppressHydrationWarning
                     onClick={handleSaveProfile}
                     disabled={isSaving}
                     className="flex items-center text-white bg-[#046BD2] hover:bg-[#035bb3] font-semibold px-5 py-2.5 rounded-xl transition-all duration-300 shadow-sm disabled:opacity-50"
