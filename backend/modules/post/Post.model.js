@@ -40,9 +40,9 @@ const postSchema = new mongoose.Schema(
     location: {
       city: { type: String, trim: true },
       district: { type: String, trim: true },
-      coordinates: {
-        lat: { type: Number },
-        lng: { type: Number },
+      geo: {
+        type: { type: String, enum: ['Point'], default: 'Point' },
+        coordinates: { type: [Number] }, // [longitude, latitude]
       },
     },
     userId: {
@@ -66,6 +66,7 @@ const postSchema = new mongoose.Schema(
 
 // Indexes
 postSchema.index({ country: 1, isActive: 1 }); // Main querying index
+postSchema.index({ "location.geo": "2dsphere" }); // Geospatial indexing for rigorous radial scale
 postSchema.index({ categoryPath: 1 });
 postSchema.index({ price: 1 });
 postSchema.index({ userId: 1 });

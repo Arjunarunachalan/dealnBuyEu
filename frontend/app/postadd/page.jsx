@@ -6,6 +6,7 @@ import CategorySelector from '../../components/postadd/CategorySelector';
 import SubcategorySelector from '../../components/postadd/SubcategorySelector';
 import ProductDetailsForm from '../../components/postadd/ProductDetailsForm';
 import api from '../../lib/axiosInstance';
+import Modal from '../../components/ui/Modal';
 
 import { useAuth } from '../../lib/useAuth';
 
@@ -19,6 +20,16 @@ export default function PostAddPage() {
 
   const [categories, setCategories] = useState([]);
   const [loadingCats, setLoadingCats] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [modalState, setModalState] = useState({ isOpen: false, title: '', message: '', type: 'info', redirectUrl: null });
+
+  const closeModal = () => {
+    const url = modalState.redirectUrl;
+    setModalState(prev => ({ ...prev, isOpen: false }));
+    if (url) {
+      window.location.href = url;
+    }
+  };
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -53,13 +64,26 @@ export default function PostAddPage() {
   };
 
   const handleFinalSubmit = async (data) => {
+    setIsSubmitting(true);
     try {
+      const locationData = {
+        city: typeof data.location === 'object' ? data.location.address : data.location
+      };
+      
+      // Map GPS coordinates natively into GeoJSON format required by 2dsphere backend index
+      if (typeof data.location === 'object' && data.location.lat != null && data.location.lng != null) {
+        locationData.geo = {
+          type: 'Point',
+          coordinates: [data.location.lng, data.location.lat] // Spec requires [longitude, latitude]
+        };
+      }
+
       // Structure payload for the backend specifically
       const payload = {
         title: data.title,
         description: data.description,
         price: data.price,
-        location: { city: data.location },
+        location: locationData,
         images: data.images,
         categoryId: selection.subcategoryId, // The final leaf node we are posting in
         attributes: {} // populate explicit dynamic attributes
@@ -73,7 +97,6 @@ export default function PostAddPage() {
       });
 
       const res = await api.post('/posts', payload);
-      alert('Post submitted successfully! Redirecting...');
       
       // Calculate slug for redirect
       let slug = '';
@@ -85,10 +108,13 @@ export default function PostAddPage() {
       };
       if (categories) traverse(categories);
       
-      window.location.href = slug ? `/category/${slug}` : '/';
+      const redirectUrl = slug ? `/category/${slug}` : '/';
+      setModalState({ isOpen: true, title: 'Success', message: 'Post submitted successfully!', type: 'success', redirectUrl });
     } catch (err) {
       console.error(err);
-      alert(err?.response?.data?.message || 'Failed to submit post.');
+      setModalState({ isOpen: true, title: 'Error', message: err?.response?.data?.message || 'Failed to submit post.', type: 'error' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -132,12 +158,21 @@ export default function PostAddPage() {
                   subcategoryId={selection.subcategoryId}
                   onBack={handleBackToSubcategories}
                   onSubmit={handleFinalSubmit}
+                  isSubmitting={isSubmitting}
                 />
               )}
             </>
           )}
         </div>
       </div>
+
+      <Modal 
+        isOpen={modalState.isOpen}
+        title={modalState.title}
+        message={modalState.message}
+        type={modalState.type}
+        onClose={closeModal}
+      />
     </main>
   );
 }

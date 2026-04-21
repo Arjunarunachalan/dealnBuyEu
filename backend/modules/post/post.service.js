@@ -2,6 +2,7 @@ import Post from "./Post.model.js";
 import Category from "../category/Category.model.js";
 import { getCategoryPath } from "../category/category.service.js";
 import { decryptField } from "../../utils/fieldEncryption.js";
+import cloudinary from "../../utils/cloudinary.js";
 
 // ─────────────────────────────────────────────
 // HIGHER ORDER HELPERS
@@ -125,7 +126,7 @@ const buildSortQuery = (sortOption) => {
  * Constructs scalable MongoDB db queries tracking schema bindings precisely
  */
 const buildFilterQuery = (queryParams, category) => {
-  const { categoryId, categorySlug, minPrice, maxPrice, country, ...dynamicParams } = queryParams;
+  const { categoryId, categorySlug, minPrice, maxPrice, country, lat, lng, ...dynamicParams } = queryParams;
   const dbQuery = { isActive: true };
 
   // Explicit Strict Country Enforcement
@@ -145,6 +146,18 @@ const buildFilterQuery = (queryParams, category) => {
     dbQuery.price = {};
     if (minPrice !== undefined) dbQuery.price.$gte = Number(minPrice);
     if (maxPrice !== undefined) dbQuery.price.$lte = Number(maxPrice);
+  }
+
+  // Handle GeoSpatial 2dsphere nearest constraints natively
+  if (lat !== undefined && lng !== undefined) {
+    dbQuery["location.geo"] = {
+      $near: {
+        $geometry: {
+          type: "Point",
+          coordinates: [Number(lng), Number(lat)] // GeoJSON expects [longitude, latitude]
+        }
+      }
+    };
   }
 
   const reservedKeys = ["page", "limit", "sort"];
@@ -242,6 +255,25 @@ export const createPost = async (postData, userId) => {
   // 4. Resolve Context Hierarchy
   const categoryPath = await getCategoryPath(categoryId);
 
+  // 4b. Cloudinary Image Uploads
+  let uploadedImages = [];
+  if (images && images.length > 0) {
+    const uploadPromises = images.map(async (base64Img) => {
+      // Direct base64 string upload to Cloudinary
+      try {
+        const result = await cloudinary.uploader.upload(base64Img, {
+          folder: 'dealnBuyEu/posts',
+        });
+        return result.secure_url;
+      } catch (err) {
+        console.error("Cloudinary upload error:", err);
+        throw new Error("Failed to upload image to the cloud.");
+      }
+    });
+    // Upload concurrently
+    uploadedImages = await Promise.all(uploadPromises);
+  }
+
   // 5. Instantiation Persistence
   const post = await Post.create({
     title: normTitle,
@@ -250,7 +282,7 @@ export const createPost = async (postData, userId) => {
     categoryId,
     categoryPath,
     attributes: validAttributes,
-    images: images || [],
+    images: uploadedImages,
     location: location || {},
     userId,
     isActive: true,
@@ -270,20 +302,62 @@ export const getPosts = async (queryParams) => {
   let category = null;
   if (queryParams.categorySlug) {
     category = await Category.findOne({ slug: queryParams.categorySlug })
-      .select("attributes name slug _id")
+      .select("attributes name slug _id parentId")
       .lean();
     if (category) {
       queryParams.categoryId = category._id.toString();
     }
   } else if (queryParams.categoryId) {
     category = await Category.findById(queryParams.categoryId)
-      .select("attributes name slug")
+      .select("attributes name slug parentId")
       .lean();
+  }
+
+  // If the matched category has no attributes (i.e. it's a parent), aggregate
+  // attributes from all descendant children so filters can validate correctly.
+  if (category && (!category.attributes || category.attributes.length === 0)) {
+    const descendants = await Category.find({
+      parentId: category._id,
+      isDeleted: false,
+    }).select("attributes").lean();
+
+    // Recursively collect attributes from all levels of descendants
+    const collectAllDescendants = async (parentId) => {
+      const children = await Category.find({ parentId, isDeleted: false }).select("attributes _id").lean();
+      let allAttrs = [];
+      for (const child of children) {
+        if (child.attributes?.length > 0) allAttrs.push(...child.attributes);
+        const deeper = await collectAllDescendants(child._id);
+        allAttrs.push(...deeper);
+      }
+      return allAttrs;
+    };
+
+    const allDescendantAttrs = await collectAllDescendants(category._id);
+
+    // Merge attributes by key (deduplicate, union options)
+    const attrsMap = new Map();
+    for (const attr of allDescendantAttrs) {
+      if (!attrsMap.has(attr.key)) {
+        attrsMap.set(attr.key, { ...attr });
+      } else {
+        const existing = attrsMap.get(attr.key);
+        if (existing.options && attr.options) {
+          existing.options = Array.from(new Set([...existing.options, ...attr.options]));
+        }
+      }
+    }
+    category.attributes = Array.from(attrsMap.values());
   }
 
   // Build validated queries natively mapped
   const dbQuery = buildFilterQuery(queryParams, category);
-  const sortQuery = buildSortQuery(queryParams.sort);
+  
+  // Natively, if $near is queried, MongoDB inherently sorts ascending by distance.
+  // We must skip standard default overriding sorting or it will throw a conflict error, unless user explicitly specifies a sort query.
+  const sortQuery = (queryParams.lat && queryParams.lng && !queryParams.sort) 
+    ? undefined 
+    : buildSortQuery(queryParams.sort);
 
   const [posts, total] = await Promise.all([
     Post.find(dbQuery)

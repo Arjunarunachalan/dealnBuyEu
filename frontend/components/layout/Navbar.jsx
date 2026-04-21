@@ -76,26 +76,29 @@ export default function Navbar() {
           {/* Desktop Search Bar */}
           <div className="hidden md:flex flex-1 items-center justify-center px-8">
             {/* overflow-visible ensures the dropdown escapes the fixed-height row */}
-            <div className="w-full max-w-2xl flex relative h-[44px] overflow-visible">
-
+            <div className="w-full max-w-2xl flex relative h-[48px] overflow-visible rounded-full shadow-sm hover:shadow-md border border-gray-200 bg-white transition-all duration-300 group/searchbar focus-within:shadow-md focus-within:border-gray-300">
+              
               {/* Location autocomplete */}
-              <div className="relative flex items-center bg-gray-50 border border-gray-300 rounded-l-md px-3 py-2 w-[190px] z-[60] overflow-visible">
-                <LocationSearch placeholder="Search city…" />
+              <div className="relative flex items-center px-4 w-[220px] z-[60] overflow-visible border-r border-gray-200 hover:bg-gray-50/80 rounded-l-full transition-colors cursor-text group/location focus-within:bg-gray-50/80">
+                <LocationSearch placeholder="Search location..." />
               </div>
 
               {/* Keyword search */}
-              <div className="flex-1 relative">
+              <div className="flex-1 relative flex items-center hover:bg-gray-50/50 transition-colors focus-within:bg-white rounded-r-full">
                 <input
                   type="text"
                   placeholder="Find Cars, Mobile Phones and more..."
-                  className="w-full h-full border-y border-gray-300 pl-4 pr-10 text-[15px] focus:outline-none focus:border-[#046BD2] focus:ring-1 focus:ring-[#046BD2]"
+                  className="w-full h-full bg-transparent pl-5 pr-10 text-[15px] text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-0"
+                  suppressHydrationWarning
                 />
               </div>
 
               {/* Search button */}
-              <button className="bg-[#046BD2] hover:bg-[#035bb3] text-white px-6 rounded-r-md transition-colors h-full flex items-center justify-center">
-                <Search size={20} />
-              </button>
+              <div className="p-1 h-full flex items-center">
+                <button suppressHydrationWarning className="bg-[#046BD2] hover:bg-[#035bb3] text-white px-7 rounded-full transition-all duration-300 h-full flex items-center justify-center shadow hover:shadow-lg transform hover:-translate-y-[1px]">
+                  <Search size={18} className="font-bold" />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -219,23 +222,26 @@ export default function Navbar() {
 
           {/* Location — outside scroll container so dropdown never clips */}
           <div className="px-4 pt-4 pb-0 overflow-visible">
-            <div className="relative flex items-center bg-gray-50 border border-gray-300 rounded-md px-3 py-2.5 z-[60] overflow-visible">
-              <LocationSearch placeholder="Search city…" />
+            <div className="relative flex items-center bg-gray-50/50 border border-gray-200 rounded-full shadow-sm px-4 py-2 z-[60] overflow-visible focus-within:shadow-md focus-within:border-gray-300 focus-within:bg-white transition-all duration-300">
+              <LocationSearch placeholder="Select Location" />
             </div>
           </div>
 
           <div className="p-4 space-y-4 max-h-[calc(100vh-120px)] overflow-y-auto">
 
             {/* Keyword search — mobile */}
-            <div className="flex relative h-[44px]">
+            <div className="flex relative h-[48px] rounded-full shadow-sm hover:shadow-md border border-gray-200 bg-white transition-all duration-300 focus-within:border-gray-300 focus-within:shadow-md">
               <input
                 type="text"
                 placeholder="Find Cars, Mobile Phones..."
-                className="w-full h-full border border-gray-300 rounded-l-md pl-4 pr-10 text-[15px] focus:outline-none focus:border-[#046BD2]"
+                className="w-full h-full bg-transparent pl-5 pr-10 text-[15px] text-gray-800 focus:outline-none placeholder-gray-400"
+                suppressHydrationWarning
               />
-              <button className="bg-[#046BD2] hover:bg-[#035bb3] text-white px-4 rounded-r-md transition-colors h-full flex items-center justify-center">
-                <Search size={20} />
-              </button>
+              <div className="p-1 h-full">
+                <button suppressHydrationWarning className="bg-[#046BD2] hover:bg-[#035bb3] text-white px-6 rounded-full transition-all h-full flex items-center justify-center hover:shadow-md">
+                  <Search size={18} className="font-bold" />
+                </button>
+              </div>
             </div>
 
             {/* Selected location badge */}

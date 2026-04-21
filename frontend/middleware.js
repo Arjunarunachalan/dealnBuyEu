@@ -12,14 +12,15 @@ export function middleware(request) {
   } else {
     // Attempt basic TLD extraction (dealnbuy.fr -> fr -> FR)
     const parts = hostname.split(".");
-    const tld = parts[parts.length - 1]; // e.g., 'fr', 'de'
+    const tld = parts[parts.length - 1].toLowerCase(); // e.g., 'fr', 'de'
     
-    // Very naive mapping. In a real application, you might map specific domains:
-    const knownTLDs = ["fr", "de", "uk", "it", "es"];
+    // Use central config keys to define supported TLDs
+    const supportedTLDs = ["fr", "es", "de", "pt"]; // These match our config keys in lowercase
     
-    if (knownTLDs.includes(tld.toLowerCase())) {
+    if (supportedTLDs.includes(tld)) {
       countryCode = tld.toUpperCase();
     } else {
+
       // If we don't recognize the TLD or it's a structural domain like dealnbuy.eu
       // We must decide a fallback or block. Strict rule: NO GLOBAL FALLBACK.
       // But middleware shouldn't crash the frontend, it should just set it to empty

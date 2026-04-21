@@ -8,7 +8,7 @@ import { ImagePlus, MapPin, Tag } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import LocationInput from './LocationInput';
 
-export default function ProductDetailsForm({ categories, subcategoryId, onBack, onSubmit }) {
+export default function ProductDetailsForm({ categories, subcategoryId, onBack, onSubmit, isSubmitting }) {
   const { user } = useAuthStore();
   
   // Recursively find the selected leaf category to get its dynamic attributes
@@ -51,7 +51,38 @@ export default function ProductDetailsForm({ categories, subcategoryId, onBack, 
     if (files.length > 0) {
       const base64Promises = files.map(file => new Promise((resolve) => {
         const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
+        reader.onloadend = (event) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const MAX_WIDTH = 1024;
+            const MAX_HEIGHT = 1024;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+              if (width > MAX_WIDTH) {
+                height = Math.round((height *= MAX_WIDTH / width));
+                width = MAX_WIDTH;
+              }
+            } else {
+              if (height > MAX_HEIGHT) {
+                width = Math.round((width *= MAX_HEIGHT / height));
+                height = MAX_HEIGHT;
+              }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            // Compress image to 80% quality JPEG
+            resolve(canvas.toDataURL('image/jpeg', 0.8));
+          };
+          img.src = event.target.result;
+        };
         reader.readAsDataURL(file);
       }));
       const base64Images = await Promise.all(base64Promises);
@@ -274,7 +305,7 @@ export default function ProductDetailsForm({ categories, subcategoryId, onBack, 
         </div>
 
         <div className="pt-4 flex justify-end">
-          <Button type="submit" className="w-full md:w-auto px-10">
+          <Button type="submit" className="w-full md:w-auto px-10" isLoading={isSubmitting}>
             Post Now
           </Button>
         </div>

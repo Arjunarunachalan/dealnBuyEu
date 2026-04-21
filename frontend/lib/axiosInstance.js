@@ -43,7 +43,9 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     // If 401 Unauthorized, try to refresh the access token
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    const isAuthRequest = originalRequest.url?.includes('/auth/login') || originalRequest.url?.includes('/auth/register');
+
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthRequest) {
       originalRequest._retry = true;
 
       try {

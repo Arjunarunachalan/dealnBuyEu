@@ -92,7 +92,7 @@ export default function LocationInput({ id, value, onChange, placeholder = 'City
   // Keep internal input value in sync with external value if needed
   useEffect(() => {
     if (value !== undefined && !isFocused) {
-      setInputValue(value);
+      setInputValue(typeof value === 'object' && value ? value.address : value);
     }
   }, [value, isFocused]);
 
@@ -202,16 +202,26 @@ export default function LocationInput({ id, value, onChange, placeholder = 'City
       setInputValue(mainText);
       setPredictions([]);
       setIsOpen(false);
-      onChange(mainText); // Pass selected text back to parent
       
-      // We could fetch details here if we strictly wanted coordinates or city,
-      // but for this simple LocationInput we just need a formatted string
-      // representing the chosen location to show in the form.
+      const request = {
+        placeId: pred.place_id,
+        fields: ['geometry']
+      };
 
-      const gp = window.google?.maps?.places;
-      if (gp) {
-        sessionToken.current = new gp.AutocompleteSessionToken();
-      }
+      psService.current.getDetails(request, (place, status) => {
+        const gp = window.google?.maps?.places;
+        if (status === gp?.PlacesServiceStatus.OK && place.geometry?.location) {
+          const lat = place.geometry.location.lat();
+          const lng = place.geometry.location.lng();
+          onChange({ address: mainText, lat, lng });
+        } else {
+          onChange({ address: mainText, lat: null, lng: null });
+        }
+        
+        if (gp) {
+          sessionToken.current = new gp.AutocompleteSessionToken();
+        }
+      });
     },
     [onChange]
   );

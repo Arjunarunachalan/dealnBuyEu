@@ -2,16 +2,15 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { COUNTRY_LIST } from '../../constants/countries';
+
+
 
 export default function Footer() {
   const [selectedCountry, setSelectedCountry] = useState('');
 
-  const countries = [
-    { code: 'FR', name: 'France', url: 'https://dealnbuy.fr' },
-    { code: 'ES', name: 'Spain', url: 'https://dealnbuy.es' },
-    { code: 'DE', name: 'Germany', url: 'https://dealnbuy.de' },
-    { code: 'PT', name: 'Portugal', url: 'https://dealnbuy.pt' },
-  ];
+  const countries = COUNTRY_LIST;
+
 
   return (
     <footer className="w-full mt-12 flex flex-col">

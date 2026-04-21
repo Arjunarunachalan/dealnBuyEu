@@ -1,4 +1,5 @@
 import User from "../../models/User.js";
+import Post from "../post/Post.model.js";
 import { decryptField } from "../../utils/fieldEncryption.js";
 
 // ─────────────────────────────────────────────
@@ -6,14 +7,20 @@ import { decryptField } from "../../utils/fieldEncryption.js";
 // ─────────────────────────────────────────────
 export const getStats = async (req, res) => {
   try {
-    const totalUsers = await User.countDocuments({ isDeleted: { $ne: true } });
+    const country = req.country; // Extracted by countryGateway!
+
+    const [totalUsers, totalPosts] = await Promise.all([
+      User.countDocuments({ country, isDeleted: { $ne: true } }),
+      Post.countDocuments({ country, isActive: true }),
+    ]);
 
     return res.status(200).json({
       success: true,
-      message: "Stats fetched successfully.",
+      message: `Stats for ${country} fetched successfully.`,
       data: {
         totalUsers,
-        totalPosts: 0, // placeholder — post system comes in Phase 2
+        totalPosts,
+        totalRevenue: 0, // Placeholder for Phase 2 Payments
       },
     });
   } catch (err) {
@@ -29,19 +36,21 @@ export const getStats = async (req, res) => {
 // ─────────────────────────────────────────────
 export const getUsers = async (req, res) => {
   try {
+    const country = req.country;
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10));
     const skip = (page - 1) * limit;
 
     const [users, total] = await Promise.all([
-      User.find()
+      User.find({ country })
         .select("name surname pseudoName email role isActive createdAt authProvider")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),
-      User.countDocuments(),
+      User.countDocuments({ country }),
     ]);
+
 
     // Decrypt GDPR-encrypted fields before sending
     const decryptedUsers = users.map((u) => ({
