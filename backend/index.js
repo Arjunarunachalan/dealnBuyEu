@@ -12,6 +12,7 @@ import postRoutes from "./modules/post/post.routes.js";
 import passport from "passport";
 import "./config/passport.js";
 import { countryGateway } from "./middleware/countryGateway.js";
+import legalPageRoutes from "./routes/legalPageRoutes.js";
 
 // Load env vars
 dotenv.config();
@@ -31,7 +32,10 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cookieParser());
 app.use(passport.initialize());
 
-// Apply Gateway to ALL routes to strictly enforce country architecture
+// Legal pages are country-agnostic (global platform content) — mount BEFORE countryGateway
+app.use("/api/legal-pages", legalPageRoutes);
+
+// Apply Gateway to ALL other routes to strictly enforce country architecture
 app.use("/api", countryGateway);
 
 // Routes
