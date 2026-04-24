@@ -2,14 +2,18 @@
 
 import { useState, useRef, useEffect, use } from 'react';
 import Link from 'next/link';
-import { MapPin, MessageCircle, Share2, Flag, Navigation, ChevronLeft, ChevronRight, User, Link as LinkIcon, Loader2 } from 'lucide-react';
+import { MapPin, MessageCircle, Share2, Flag, Navigation, ChevronLeft, ChevronRight, User, Link as LinkIcon, Loader2, Heart } from 'lucide-react';
 import Navbar from '../../../components/layout/Navbar';
 import Footer from '../../../components/layout/Footer';
 import api from '../../../lib/axiosInstance';
+import { useWishlistStore } from '../../../store/useWishlistStore';
+import { useAuthStore } from '../../../store/useAuthStore';
+import { useRouter } from 'next/navigation';
 
 export default function ProductPage({ params }) {
   const resolvedParams = use(params);
   const postId = resolvedParams?.id;
+  const router = useRouter();
   
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -18,6 +22,17 @@ export default function ProductPage({ params }) {
   const [activeImage, setActiveImage] = useState(0);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const shareMenuRef = useRef(null);
+
+  // Wishlist state
+  const { isWishlisted, toggle: toggleWishlist, fetchWishlistIds, isFetched } = useWishlistStore();
+  const { isLoggedIn } = useAuthStore();
+  const wishlisted = postId ? isWishlisted(postId) : false;
+
+  useEffect(() => {
+    if (isLoggedIn && !isFetched) {
+      fetchWishlistIds();
+    }
+  }, [isLoggedIn, isFetched, fetchWishlistIds]);
 
   useEffect(() => {
     if (!postId) return;
@@ -71,6 +86,14 @@ export default function ProductPage({ params }) {
     if(confirm("Are you sure you want to report this product?")) {
        alert("Product reported successfully. Our team will review it shortly.");
     }
+  };
+
+  const handleWishlistToggle = async () => {
+    if (!isLoggedIn) {
+      router.push('/registration_login');
+      return;
+    }
+    await toggleWishlist(postId);
   };
 
   if (loading) {
@@ -193,8 +216,35 @@ export default function ProductPage({ params }) {
                   <p className="text-[#046BD2] text-3xl sm:text-4xl font-extrabold tracking-tight">{displayPrice}</p>
                 </div>
                 
-                {/* Actions: Share & Report */}
+                {/* Actions: Save, Share & Report */}
                 <div className="flex gap-6 text-gray-500 shrink-0">
+
+                  {/* Wishlist / Save Button */}
+                  <button
+                    id="wishlist-toggle-btn"
+                    onClick={handleWishlistToggle}
+                    className="flex flex-col items-center transition-colors group"
+                    title={wishlisted ? 'Remove from Wishlist' : 'Save to Wishlist'}
+                  >
+                    <div className={`p-3 rounded-full transition-colors mb-1 ${
+                      wishlisted ? 'bg-red-50' : 'bg-gray-50 group-hover:bg-red-50'
+                    }`}>
+                      <Heart
+                        size={22}
+                        className={`transition-all duration-200 ${
+                          wishlisted
+                            ? 'text-red-500 fill-red-500 scale-110'
+                            : 'text-gray-700 group-hover:text-red-500'
+                        }`}
+                      />
+                    </div>
+                    <span className={`text-[13px] font-medium ${
+                      wishlisted ? 'text-red-500' : 'text-gray-600'
+                    }`}>
+                      {wishlisted ? 'Saved' : 'Save'}
+                    </span>
+                  </button>
+
                   <div className="relative" ref={shareMenuRef}>
                     <button 
                       onClick={() => setShowShareMenu(!showShareMenu)}

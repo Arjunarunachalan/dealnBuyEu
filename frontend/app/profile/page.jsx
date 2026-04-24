@@ -4,9 +4,10 @@ import React, { useEffect, useState } from 'react';
 import Navbar from '../../components/layout/Navbar';
 import Footer from '../../components/layout/Footer';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useWishlistStore } from '../../store/useWishlistStore';
 import { useRouter } from 'next/navigation';
 import { 
-  User, Heart, List, Star, Megaphone, Shield, Trash2, LogOut, Edit3, Camera, MapPin, Phone, Mail, CheckCircle2, ChevronRight, Save, X
+  User, Heart, List, Star, Megaphone, Shield, Trash2, LogOut, Edit3, Camera, MapPin, Phone, Mail, CheckCircle2, ChevronRight, Save, X, ArrowRight, Tag, Loader2
 } from 'lucide-react';
 import Link from 'next/link';
 import api from '../../lib/axiosInstance';
@@ -14,6 +15,7 @@ import ProfileLocationInput from '../../components/ui/ProfileLocationInput';
 
 export default function ProfilePage() {
   const { user, isLoggedIn, isChecking, hydrate, logout, login } = useAuthStore();
+  const { wishlistItems, isLoading: wishlistLoading, fetchWishlistItems, toggle: toggleWishlist, wishlistIds } = useWishlistStore();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('profile');
 
@@ -73,9 +75,16 @@ export default function ProfilePage() {
     router.push('/registration_login');
   };
 
+  // Fetch wishlist items when wishlist tab is opened
+  useEffect(() => {
+    if (activeTab === 'wishlist' && isLoggedIn) {
+      fetchWishlistItems();
+    }
+  }, [activeTab, isLoggedIn, fetchWishlistItems]);
+
   const tabs = [
     { id: 'profile', label: 'User Information', icon: <User size={18} /> },
-    { id: 'wishlist', label: 'My Wishlist', icon: <Heart size={18} /> },
+    { id: 'wishlist', label: 'My Wishlist', icon: <Heart size={18} />, count: wishlistIds.size || null },
     { id: 'myads', label: 'My Ads', icon: <List size={18} /> },
     { id: 'ownAd', label: 'Own Advertisement', icon: <Megaphone size={18} /> },
     { id: 'addInterest', label: 'Add Interest', icon: <Star size={18} /> },
@@ -221,6 +230,120 @@ export default function ProfilePage() {
           </div>
         );
 
+      case 'wishlist':
+        const formatPrice = (price) =>
+          new Intl.NumberFormat('en-EU', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(price);
+        const getImg = (post) => {
+          const valid = post.images?.filter((img) => img && !img.startsWith('blob:'));
+          return valid?.length > 0 ? valid[0] : 'https://images.unsplash.com/photo-1560393464-5c69a73c5770?auto=format&fit=crop&w=400&q=80';
+        };
+        const getCity = (post) => post.location?.city
+          ? post.location.city.charAt(0).toUpperCase() + post.location.city.slice(1).toLowerCase()
+          : 'Local Pickup';
+
+        return (
+          <div className="bg-white rounded-2xl shadow-[0_4px_24px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-red-400 to-pink-400"></div>
+
+            {/* Header */}
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 tracking-tight">My Wishlist</h2>
+                <p className="text-gray-500 mt-1 text-sm">
+                  {wishlistItems.length > 0
+                    ? `${wishlistItems.length} saved ${wishlistItems.length === 1 ? 'item' : 'items'}`
+                    : 'Items you save will appear here'}
+                </p>
+              </div>
+              {wishlistItems.length > 0 && (
+                <Link
+                  href="/wishlist"
+                  className="flex items-center gap-1.5 text-[#046BD2] font-semibold text-sm hover:underline"
+                >
+                  View all <ArrowRight size={15} />
+                </Link>
+              )}
+            </div>
+
+            {/* Loading */}
+            {wishlistLoading && (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="animate-spin text-[#046BD2]" size={32} />
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!wishlistLoading && wishlistItems.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mb-5 border border-red-100">
+                  <Heart size={36} className="text-red-300" strokeWidth={1.5} />
+                </div>
+                <h3 className="text-lg font-bold text-gray-800 mb-2">No saved items yet</h3>
+                <p className="text-gray-500 text-sm max-w-xs mb-6 leading-relaxed">
+                  Browse listings and tap the heart icon to save your favourite deals.
+                </p>
+                <Link
+                  href="/"
+                  className="inline-flex items-center gap-2 bg-[#046BD2] hover:bg-[#035bb3] text-white font-bold px-6 py-2.5 rounded-xl shadow-sm transition-all"
+                >
+                  Explore Listings <ArrowRight size={16} />
+                </Link>
+              </div>
+            )}
+
+            {/* Grid */}
+            {!wishlistLoading && wishlistItems.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {wishlistItems.map((post) => (
+                  <div
+                    key={post._id}
+                    className="group rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col"
+                  >
+                    {/* Image */}
+                    <Link href={`/product/${post._id}`} className="block h-[140px] bg-white flex items-center justify-center overflow-hidden">
+                      <img
+                        src={getImg(post)}
+                        alt={post.title}
+                        className="w-full h-full object-contain p-3 mix-blend-multiply group-hover:scale-105 transition-transform duration-500"
+                      />
+                    </Link>
+
+                    {/* Body */}
+                    <div className="p-3 flex flex-col flex-grow">
+                      <Link href={`/product/${post._id}`}>
+                        <h4 className="font-bold text-gray-900 text-[13px] leading-snug mb-1 line-clamp-2 hover:text-[#046BD2] transition-colors">
+                          {post.title}
+                        </h4>
+                      </Link>
+                      <p className="text-[#046BD2] font-extrabold text-base mb-2">{formatPrice(post.price)}</p>
+                      <div className="flex items-center text-gray-400 text-[12px] mt-auto">
+                        <MapPin size={11} className="mr-1 flex-shrink-0" />
+                        <span className="truncate">{getCity(post)}</span>
+                      </div>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="px-3 pb-3 flex gap-2">
+                      <Link
+                        href={`/product/${post._id}`}
+                        className="flex-1 bg-[#046BD2] hover:bg-[#035bb3] text-white font-bold text-[12px] py-2 rounded-lg flex items-center justify-center gap-1 transition-colors"
+                      >
+                        View <ArrowRight size={12} />
+                      </Link>
+                      <button
+                        onClick={() => toggleWishlist(post._id)}
+                        title="Remove from wishlist"
+                        className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-red-50 hover:border-red-200 transition-colors"
+                      >
+                        <Heart size={13} className="fill-red-500 text-red-500" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
       case 'deleteAccount':
         return (
           <div className="bg-white rounded-2xl shadow-[0_4px_24px_rgb(0,0,0,0.04)] border border-red-100 p-6 md:p-10 relative overflow-hidden">
@@ -315,23 +438,28 @@ export default function ProfilePage() {
             {/* Navigation Menu */}
             <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-gray-100 overflow-hidden">
               <div className="p-3 space-y-1">
-                {tabs.map((t) => (
-                   <button 
-                     key={t.id} 
-                     onClick={() => setActiveTab(t.id)}
-                     className={`w-full flex items-center px-4 py-3.5 rounded-xl transition-all duration-200 text-[15px] font-semibold group
-                       ${activeTab === t.id 
-                         ? 'bg-blue-50/80 text-[#046BD2]' 
-                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                       }
-                     `}
-                   >
-                     <span className={`mr-3.5 transition-colors ${activeTab === t.id ? 'text-[#046BD2]' : 'text-gray-400 group-hover:text-gray-600'}`}>
-                       {t.icon}
-                     </span> 
-                     {t.label}
-                   </button>
-                ))}
+                 {tabs.map((t) => (
+                    <button 
+                      key={t.id} 
+                      onClick={() => setActiveTab(t.id)}
+                      className={`w-full flex items-center px-4 py-3.5 rounded-xl transition-all duration-200 text-[15px] font-semibold group
+                        ${activeTab === t.id 
+                          ? 'bg-blue-50/80 text-[#046BD2]' 
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                        }
+                      `}
+                    >
+                      <span className={`mr-3.5 transition-colors ${activeTab === t.id ? 'text-[#046BD2]' : 'text-gray-400 group-hover:text-gray-600'}`}>
+                        {t.icon}
+                      </span> 
+                      <span className="flex-1 text-left">{t.label}</span>
+                      {t.count > 0 && (
+                        <span className="ml-auto bg-red-500 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                          {t.count}
+                        </span>
+                      )}
+                    </button>
+                 ))}
               </div>
               
               <div className="border-t border-gray-100 p-3 mt-1 space-y-1">

@@ -68,6 +68,12 @@ const userSchema = mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    wishlist: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Post",
+      },
+    ],
   },
   {
     timestamps: true,
