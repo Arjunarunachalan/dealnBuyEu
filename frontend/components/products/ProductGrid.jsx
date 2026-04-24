@@ -4,10 +4,14 @@ import { useState, useEffect } from 'react';
 import ProductCard from './ProductCard';
 import api from '../../lib/axiosInstance';
 import { Loader2 } from 'lucide-react';
+import { useAuthStore } from '../../store/useAuthStore';
+import { useWishlistStore } from '../../store/useWishlistStore';
 
 export default function ProductGrid() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { isLoggedIn } = useAuthStore();
+  const { fetchWishlistIds, isFetched } = useWishlistStore();
 
   useEffect(() => {
     const fetchLatest = async () => {
@@ -22,6 +26,14 @@ export default function ProductGrid() {
     };
     fetchLatest();
   }, []);
+
+  // Hydrate wishlist IDs so card hearts show the correct saved state
+  useEffect(() => {
+    if (isLoggedIn && !isFetched) {
+      fetchWishlistIds();
+    }
+  }, [isLoggedIn, isFetched, fetchWishlistIds]);
+
 
   return (
     <section className="w-full bg-[#F3F4F6] py-12">

@@ -1,7 +1,16 @@
-import { Star, MapPin } from 'lucide-react';
+'use client';
+
+import { Star, MapPin, Heart } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useWishlistStore } from '../../store/useWishlistStore';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export default function ProductCard({ id, title, price, location, badge, rating, imageUrl }) {
+  const router = useRouter();
+  const { isWishlisted, toggle } = useWishlistStore();
+  const { isLoggedIn } = useAuthStore();
+
   const isValidImage = imageUrl && typeof imageUrl === 'string' && !imageUrl.startsWith('blob:');
   const finalImageUrl = isValidImage ? imageUrl : 'https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&q=80&w=400';
   
@@ -9,6 +18,7 @@ export default function ProductCard({ id, title, price, location, badge, rating,
   const displayLocation = location ? 
     location.split(/[\s,]+/).map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(', ') 
     : '';
+
   // Render stars
   const stars = [];
   for (let i = 0; i < 5; i++) {
@@ -27,7 +37,18 @@ export default function ProductCard({ id, title, price, location, badge, rating,
   if (badge === "Featured") badgeColor = "bg-[#3B82F6]";
   if (badge === "Recommended") badgeColor = "bg-[#F59E0B]";
 
-  const productId = id || '123'; // fallback for mock data
+  const productId = id || '123';
+  const wishlisted = productId ? isWishlisted(productId) : false;
+
+  const handleWishlistClick = (e) => {
+    e.preventDefault();  // Prevent Link navigation
+    e.stopPropagation();
+    if (!isLoggedIn) {
+      router.push('/registration_login');
+      return;
+    }
+    toggle(productId);
+  };
 
   return (
     <Link href={`/product/${productId}`} className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow border border-gray-100 cursor-pointer flex flex-col h-full block group">
@@ -43,6 +64,23 @@ export default function ProductCard({ id, title, price, location, badge, rating,
             {badge.toUpperCase()}
           </div>
         )}
+
+        {/* Wishlist Heart Button */}
+        <button
+          id={`wishlist-card-${productId}`}
+          onClick={handleWishlistClick}
+          aria-label={wishlisted ? 'Remove from wishlist' : 'Save to wishlist'}
+          className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-md border transition-all duration-200
+            ${wishlisted
+              ? 'bg-red-500 border-red-500 scale-110'
+              : 'bg-white border-gray-200 opacity-0 group-hover:opacity-100 hover:border-red-300 hover:bg-red-50'
+            }`}
+        >
+          <Heart
+            size={15}
+            className={wishlisted ? 'fill-white text-white' : 'text-gray-500 hover:text-red-500'}
+          />
+        </button>
       </div>
 
       {/* Content */}
@@ -68,3 +106,4 @@ export default function ProductCard({ id, title, price, location, badge, rating,
     </Link>
   );
 }
+
