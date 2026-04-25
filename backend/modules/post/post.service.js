@@ -408,3 +408,116 @@ export const getPostById = async (id, country) => {
 
   return post;
 };
+
+// ─────────────────────────────────────────────
+// MY ADS — OWNER-SCOPED SERVICES
+// ─────────────────────────────────────────────
+
+/**
+ * getMyPosts
+ * Returns paginated posts owned by the authenticated user within the country.
+ * Supports optional `status` filter: "active" | "inactive" | omit for all.
+ */
+export const getMyPosts = async (userId, country, queryParams = {}) => {
+  if (!country) throw new Error("Strict architecture error: country is required.");
+
+  const page  = Math.max(Number(queryParams.page)  || 1,  1);
+  const limit = Math.max(Number(queryParams.limit) || 12, 1);
+  const skip  = (page - 1) * limit;
+
+  const dbQuery = { userId, country };
+
+  // Optional status filter
+  if (queryParams.status === "active")   dbQuery.isActive = true;
+  if (queryParams.status === "inactive") dbQuery.isActive = false;
+
+  const sortMap = {
+    latest:     { createdAt: -1 },
+    oldest:     { createdAt:  1 },
+    price_asc:  { price:      1 },
+    price_desc: { price:     -1 },
+  };
+  const sortQuery = sortMap[queryParams.sort] || { createdAt: -1 };
+
+  const [posts, total, activeCount, inactiveCount] = await Promise.all([
+    Post.find(dbQuery)
+      .populate("categoryId", "name slug icon")
+      .sort(sortQuery)
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    Post.countDocuments(dbQuery),
+    Post.countDocuments({ userId, country, isActive: true }),
+    Post.countDocuments({ userId, country, isActive: false }),
+  ]);
+
+  return {
+    posts,
+    total,
+    page,
+    totalPages: Math.ceil(total / limit),
+    counts: { all: activeCount + inactiveCount, active: activeCount, inactive: inactiveCount },
+  };
+};
+
+/**
+ * updatePost
+ * Allows the owner to update allowed fields of their own post.
+ * Enforces country + ownership scoping.
+ */
+export const updatePost = async (id, userId, country, updateData) => {
+  if (!country) throw new Error("Strict architecture error: country is required.");
+
+  const post = await Post.findOne({ _id: id, userId, country });
+  if (!post) {
+    const err = new Error("Post not found, or you do not have permission to update it.");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  // Allowlist of fields the owner can update
+  const ALLOWED = ["title", "description", "price", "isActive"];
+  for (const key of ALLOWED) {
+    if (updateData[key] !== undefined) {
+      post[key] = updateData[key];
+    }
+  }
+
+  await post.save();
+  return post.toObject();
+};
+
+/**
+ * deletePost
+ * Permanently removes the post. Owner + country scoped.
+ * Also attempts to clean up Cloudinary images.
+ */
+export const deletePost = async (id, userId, country) => {
+  if (!country) throw new Error("Strict architecture error: country is required.");
+
+  const post = await Post.findOne({ _id: id, userId, country });
+  if (!post) {
+    const err = new Error("Post not found, or you do not have permission to delete it.");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  // Best-effort Cloudinary cleanup (do not block on failure)
+  if (post.images && post.images.length > 0) {
+    const destroyPromises = post.images.map(async (url) => {
+      try {
+        // Extract public_id from Cloudinary URL
+        const parts = url.split("/");
+        const fileWithExt = parts[parts.length - 1];
+        const publicId = "dealnBuyEu/posts/" + fileWithExt.split(".")[0];
+        await cloudinary.uploader.destroy(publicId);
+      } catch {
+        // Silently ignore Cloudinary cleanup errors
+      }
+    });
+    await Promise.allSettled(destroyPromises);
+  }
+
+  await Post.deleteOne({ _id: id });
+  return { deleted: true, id };
+};
