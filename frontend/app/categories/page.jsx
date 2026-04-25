@@ -71,12 +71,6 @@ export default function AllCategoriesPage() {
       <Navbar />
 
       <main className="flex-grow max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
-        {/* Breadcrumb */}
-        <div className="text-sm text-gray-500 mb-6 flex flex-wrap gap-1">
-          <Link href="/" className="hover:text-[#046BD2]">Home</Link>
-          <span>/</span>
-          <span className="text-gray-900 font-medium truncate">All Categories</span>
-        </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
           <h1 className="text-3xl font-extrabold text-gray-900 mb-8 border-b border-gray-100 pb-4">

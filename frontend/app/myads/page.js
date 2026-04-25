@@ -1,223 +1,529 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import Navbar from '../../components/layout/Navbar';
 import Footer from '../../components/layout/Footer';
-import Link from 'next/link';
-import { Edit2, Trash2, Eye, Heart, Tag, Calendar, MoreVertical, PlusCircle, Megaphone } from 'lucide-react';
+import { useAuth } from '../../lib/useAuth';
+import api from '../../lib/axiosInstance';
+import {
+  PlusCircle, Tag, Eye, Trash2, Edit2, ToggleLeft, ToggleRight,
+  MapPin, Calendar, Loader2, AlertCircle, RefreshCw, ChevronLeft,
+  ChevronRight, Megaphone, Package, ArrowRight, CheckCircle2,
+} from 'lucide-react';
 
-const initialAds = [
-  {
-    id: "AD-10023",
-    title: "2021 Apple MacBook Pro 14\" M1 Pro",
-    price: "€1,450",
-    category: "Electronics",
-    date: "14 Apr 2026",
-    status: "active",
-    views: 142,
-    likes: 12,
-    image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&q=80&w=400&h=300",
-  },
-  {
-    id: "AD-10045",
-    title: "BMW 3 Series 320d M Sport 2018",
-    price: "€22,500",
-    category: "Vehicles",
-    date: "12 Apr 2026",
-    status: "active",
-    views: 845,
-    likes: 45,
-    image: "https://images.unsplash.com/photo-1555353540-64fd1b1909e4?auto=format&fit=crop&q=80&w=400&h=300",
-  },
-  {
-    id: "AD-10088",
-    title: "Vintage Leather Sofa - Excellent Condition",
-    price: "€350",
-    category: "Furniture",
-    date: "16 Apr 2026",
-    status: "pending",
-    views: 0,
-    likes: 0,
-    image: "https://images.unsplash.com/photo-1550254478-ead40cc54513?auto=format&fit=crop&q=80&w=400&h=300",
-  },
-  {
-    id: "AD-09950",
-    title: "Sony PlayStation 5 Console + 2 Games",
-    price: "€400",
-    category: "Gaming",
-    date: "10 Mar 2026",
-    status: "sold",
-    views: 1250,
-    likes: 89,
-    image: "https://images.unsplash.com/photo-1606813907291-d86efa9b94db?auto=format&fit=crop&q=80&w=400&h=300",
-  }
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const formatPrice = (p) =>
+  new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(p);
+
+const formatDate = (d) =>
+  new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+const getImage = (post) => {
+  const valid = post.images?.filter((i) => i && !i.startsWith('blob:'));
+  return valid?.length > 0
+    ? valid[0]
+    : 'https://images.unsplash.com/photo-1560393464-5c69a73c5770?auto=format&fit=crop&w=400&q=80';
+};
+
+const getLocation = (post) => {
+  if (post.location?.city) return post.location.city;
+  if (post.location?.district) return post.location.district;
+  return 'Not specified';
+};
+
+// ─── Status badge ──────────────────────────────────────────────────────────────
+function StatusBadge({ isActive }) {
+  return isActive ? (
+    <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 text-[11px] font-bold px-2.5 py-1 rounded-full border border-emerald-200">
+      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+      Active
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-500 text-[11px] font-bold px-2.5 py-1 rounded-full border border-gray-200">
+      <span className="w-1.5 h-1.5 rounded-full bg-gray-400 inline-block" />
+      Inactive
+    </span>
+  );
+}
+
+// ─── Skeleton card ─────────────────────────────────────────────────────────────
+function SkeletonCard() {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden animate-pulse">
+      <div className="h-44 bg-gray-200" />
+      <div className="p-4 space-y-3">
+        <div className="h-3 bg-gray-200 rounded w-1/3" />
+        <div className="h-5 bg-gray-200 rounded w-3/4" />
+        <div className="h-4 bg-gray-200 rounded w-1/2" />
+        <div className="flex gap-2 pt-2">
+          <div className="h-8 bg-gray-200 rounded-lg flex-1" />
+          <div className="h-8 w-8 bg-gray-200 rounded-lg" />
+          <div className="h-8 w-8 bg-gray-200 rounded-lg" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Ad card ──────────────────────────────────────────────────────────────────
+function AdCard({ post, onToggle, onDelete, actionLoading }) {
+  const isLoading = actionLoading === post._id;
+
+  return (
+    <div className="group bg-white rounded-2xl border border-gray-100 shadow-[0_2px_12px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_32px_rgb(0,0,0,0.10)] transition-all duration-300 overflow-hidden flex flex-col">
+      {/* Image */}
+      <div className="relative h-44 overflow-hidden bg-gray-50">
+        <img
+          src={getImage(post)}
+          alt={post.title}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+        />
+        <div className="absolute top-3 left-3">
+          <StatusBadge isActive={post.isActive} />
+        </div>
+        {/* Hover overlay */}
+        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+          <Link
+            href={`/product/${post._id}`}
+            className="bg-white text-gray-800 p-2.5 rounded-full hover:bg-[#046BD2] hover:text-white transition-colors"
+            title="View Ad"
+          >
+            <Eye size={17} />
+          </Link>
+          <Link
+            href={`/postadd?edit=${post._id}`}
+            className="bg-white text-gray-800 p-2.5 rounded-full hover:bg-amber-500 hover:text-white transition-colors"
+            title="Edit Ad"
+          >
+            <Edit2 size={17} />
+          </Link>
+          <button
+            onClick={() => onDelete(post._id)}
+            disabled={isLoading}
+            className="bg-white text-gray-800 p-2.5 rounded-full hover:bg-red-500 hover:text-white transition-colors disabled:opacity-50"
+            title="Delete Ad"
+          >
+            <Trash2 size={17} />
+          </button>
+        </div>
+        {isLoading && (
+          <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
+            <Loader2 size={24} className="animate-spin text-[#046BD2]" />
+          </div>
+        )}
+      </div>
+
+      {/* Body */}
+      <div className="p-4 flex flex-col flex-grow">
+        <p className="text-[11px] text-gray-400 font-medium mb-1 uppercase tracking-wide">
+          {post.categoryId?.name || 'Uncategorized'}
+        </p>
+        <h3 className="text-[15px] font-bold text-gray-900 line-clamp-2 mb-1 min-h-[44px] leading-snug">
+          {post.title}
+        </h3>
+        <p className="text-[#046BD2] font-extrabold text-xl mb-3 tracking-tight">
+          {formatPrice(post.price)}
+        </p>
+
+        <div className="mt-auto space-y-1.5 text-[12.5px] text-gray-400">
+          <div className="flex items-center gap-1.5">
+            <MapPin size={12} className="flex-shrink-0" />
+            <span className="truncate">{getLocation(post)}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Calendar size={12} className="flex-shrink-0" />
+            <span>{formatDate(post.createdAt)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer actions */}
+      <div className="border-t border-gray-100 px-4 py-3 flex items-center gap-2">
+        <Link
+          href={`/product/${post._id}`}
+          className="flex-1 bg-[#046BD2] hover:bg-[#035bb3] text-white text-[13px] font-bold py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all"
+        >
+          View <ArrowRight size={13} />
+        </Link>
+        <button
+          onClick={() => onToggle(post._id, post.isActive)}
+          disabled={isLoading}
+          title={post.isActive ? 'Deactivate' : 'Activate'}
+          className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-colors disabled:opacity-50 ${
+            post.isActive
+              ? 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'
+              : 'border-gray-200 text-gray-400 hover:bg-gray-50'
+          }`}
+        >
+          {post.isActive ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+        </button>
+        <button
+          onClick={() => onDelete(post._id)}
+          disabled={isLoading}
+          title="Delete"
+          className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center text-gray-400 hover:bg-red-50 hover:border-red-200 hover:text-red-500 transition-colors disabled:opacity-50"
+        >
+          <Trash2 size={15} />
+        </button>
+      </div>
+
+      {/* Boost CTA for active ads */}
+      {post.isActive && (
+        <div className="px-4 pb-3">
+          <button className="w-full flex items-center justify-center gap-2 py-2 text-[12px] font-semibold text-[#046BD2] hover:bg-blue-50 rounded-xl border border-[#046BD2]/20 transition-colors">
+            <Megaphone size={13} /> Boost Ad
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Delete confirmation modal ─────────────────────────────────────────────────
+function DeleteModal({ onConfirm, onCancel, loading }) {
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+      <div className="bg-white rounded-2xl shadow-2xl p-7 max-w-sm w-full text-center animate-scale-in">
+        <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Trash2 size={26} className="text-red-500" />
+        </div>
+        <h3 className="text-xl font-bold text-gray-900 mb-2">Delete this ad?</h3>
+        <p className="text-gray-500 text-sm mb-6">This action is permanent and cannot be undone. All images will also be removed.</p>
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            disabled={loading}
+            className="flex-1 py-2.5 rounded-xl border border-gray-200 font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
+          >
+            {loading ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Toast notification ────────────────────────────────────────────────────────
+function Toast({ message, type, onClose }) {
+  useEffect(() => {
+    const t = setTimeout(onClose, 3000);
+    return () => clearTimeout(t);
+  }, [onClose]);
+  return (
+    <div className={`fixed bottom-6 right-6 z-[300] flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-xl text-white text-sm font-semibold animate-slide-up ${
+      type === 'success' ? 'bg-emerald-500' : 'bg-red-500'
+    }`}>
+      {type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+      {message}
+    </div>
+  );
+}
+
+// ─── Main Page ─────────────────────────────────────────────────────────────────
+const TABS = [
+  { key: 'all',      label: 'All Ads'  },
+  { key: 'active',   label: 'Active'   },
+  { key: 'inactive', label: 'Inactive' },
 ];
 
 export default function MyAdsPage() {
-  const [ads, setAds] = useState(initialAds);
-  const [activeTab, setActiveTab] = useState('all');
+  const { isChecking, isLoggedIn } = useAuth(true);
 
-  const filteredAds = ads.filter(ad => {
-    if (activeTab === 'all') return true;
-    return ad.status === activeTab;
-  });
+  const [posts,        setPosts]        = useState([]);
+  const [counts,       setCounts]       = useState({ all: 0, active: 0, inactive: 0 });
+  const [loading,      setLoading]      = useState(true);
+  const [error,        setError]        = useState(null);
+  const [activeTab,    setActiveTab]    = useState('all');
+  const [page,         setPage]         = useState(1);
+  const [totalPages,   setTotalPages]   = useState(1);
+  const [actionLoading, setActionLoading] = useState(null); // postId being acted on
+  const [deleteTarget, setDeleteTarget] = useState(null);   // postId awaiting confirm
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [toast,        setToast]        = useState(null);   // { message, type }
 
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case 'active':
-        return <span className="bg-emerald-100 text-emerald-700 text-xs font-bold px-2.5 py-1 rounded-full border border-emerald-200">Active</span>;
-      case 'pending':
-        return <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2.5 py-1 rounded-full border border-amber-200">Pending Review</span>;
-      case 'sold':
-        return <span className="bg-gray-100 text-gray-700 text-xs font-bold px-2.5 py-1 rounded-full border border-gray-200">Sold</span>;
-      case 'expired':
-        return <span className="bg-red-100 text-red-700 text-xs font-bold px-2.5 py-1 rounded-full border border-red-200">Expired</span>;
-      default:
-        return null;
+  const showToast = (message, type = 'success') => setToast({ message, type });
+
+  // ── Fetch ──────────────────────────────────────────────────────────────────
+  const fetchPosts = useCallback(async (tab, pg) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = { page: pg, limit: 12 };
+      if (tab !== 'all') params.status = tab;
+
+      const res = await api.get('/posts/my', { params });
+      if (res.data?.success) {
+        const { posts: p, totalPages: tp, counts: c } = res.data.data;
+        setPosts(p);
+        setTotalPages(tp);
+        if (c) setCounts(c);
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to load your ads. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isLoggedIn) fetchPosts(activeTab, page);
+  }, [isLoggedIn, activeTab, page, fetchPosts]);
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    setPage(1);
+  };
+
+  // ── Toggle active/inactive ─────────────────────────────────────────────────
+  const handleToggle = async (postId, currentActive) => {
+    setActionLoading(postId);
+    try {
+      await api.put(`/posts/${postId}`, { isActive: !currentActive });
+      setPosts((prev) =>
+        prev.map((p) => p._id === postId ? { ...p, isActive: !currentActive } : p)
+      );
+      // update counts optimistically
+      setCounts((c) => ({
+        ...c,
+        active:   currentActive ? c.active - 1   : c.active + 1,
+        inactive: currentActive ? c.inactive + 1 : c.inactive - 1,
+      }));
+      showToast(`Ad ${!currentActive ? 'activated' : 'deactivated'} successfully.`);
+    } catch {
+      showToast('Failed to update ad status.', 'error');
+    } finally {
+      setActionLoading(null);
     }
   };
 
-  const deleteAd = (id) => {
-    if (window.confirm('Are you sure you want to delete this ad?')) {
-      setAds(ads.filter(ad => ad.id !== id));
+  // ── Delete ─────────────────────────────────────────────────────────────────
+  const handleDeleteRequest = (postId) => setDeleteTarget(postId);
+  const handleDeleteCancel  = () => setDeleteTarget(null);
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      await api.delete(`/posts/${deleteTarget}`);
+      const removed = posts.find((p) => p._id === deleteTarget);
+      setPosts((prev) => prev.filter((p) => p._id !== deleteTarget));
+      setCounts((c) => ({
+        all:      c.all - 1,
+        active:   removed?.isActive ? c.active - 1   : c.active,
+        inactive: !removed?.isActive ? c.inactive - 1 : c.inactive,
+      }));
+      showToast('Ad deleted successfully.');
+      setDeleteTarget(null);
+      // If page becomes empty after delete, go back
+      if (posts.length === 1 && page > 1) setPage((p) => p - 1);
+    } catch {
+      showToast('Failed to delete ad.', 'error');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
+  // ── Auth/loading guard ─────────────────────────────────────────────────────
+  if (isChecking) {
+    return (
+      <div className="min-h-screen bg-[#F3F4F6] flex flex-col">
+        <Navbar />
+        <main className="flex-grow flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 size={40} className="animate-spin text-[#046BD2]" />
+            <p className="text-gray-500 font-medium">Loading...</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  // ── Main render ────────────────────────────────────────────────────────────
   return (
-    <main className="min-h-screen bg-[#F3F4F6] flex flex-col">
+    <div className="min-h-screen bg-[#F3F4F6] flex flex-col">
       <Navbar />
-      
-      <div className="flex-grow max-w-[1200px] w-full mx-auto px-4 sm:px-6 py-8">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8">
+
+      <main className="flex-grow max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+
+        {/* ── Page header ─────────────────────────────────────────────────── */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">My Ads</h1>
-            <p className="text-gray-500 mt-2">Manage your listings, check views, and update statuses.</p>
+            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">My Ads</h1>
+            <p className="text-gray-500 mt-1 text-sm">Manage your listings, track activity, and update statuses.</p>
           </div>
-          <div className="mt-4 sm:mt-0">
-            <Link 
-              href="/postadd" 
-              className="inline-flex items-center bg-[#046BD2] hover:bg-[#035bb3] text-white px-5 py-2.5 rounded-lg font-semibold transition-colors shadow-sm"
-            >
-              <PlusCircle size={20} className="mr-2" />
-              Post New Ad
-            </Link>
-          </div>
+          <Link
+            href="/postadd"
+            className="inline-flex items-center gap-2 bg-[#046BD2] hover:bg-[#035bb3] text-white px-5 py-2.5 rounded-xl font-bold shadow-md shadow-blue-500/20 transition-all hover:-translate-y-0.5 text-sm"
+          >
+            <PlusCircle size={18} /> Post New Ad
+          </Link>
         </div>
 
-        {/* Status Tabs */}
-        <div className="flex overflow-x-auto hide-scrollbar space-x-2 border-b border-gray-200 mb-6 pb-px">
-          {['all', 'active', 'pending', 'sold', 'expired'].map((tab) => (
+        {/* ── Stats bar ──────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          {[
+            { label: 'Total Ads',    value: counts.all,      color: 'bg-blue-50 border-blue-100',     text: 'text-[#046BD2]' },
+            { label: 'Active',       value: counts.active,   color: 'bg-emerald-50 border-emerald-100', text: 'text-emerald-600' },
+            { label: 'Inactive',     value: counts.inactive, color: 'bg-gray-50 border-gray-200',     text: 'text-gray-500' },
+          ].map((stat) => (
+            <div key={stat.label} className={`${stat.color} border rounded-2xl px-4 py-3 text-center`}>
+              <p className={`text-2xl font-extrabold ${stat.text}`}>{stat.value}</p>
+              <p className="text-[12px] text-gray-500 font-medium mt-0.5">{stat.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Status tabs ─────────────────────────────────────────────────── */}
+        <div className="flex overflow-x-auto gap-1 border-b border-gray-200 mb-6 pb-px">
+          {TABS.map((tab) => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-5 py-3 text-sm font-semibold border-b-2 whitespace-nowrap transition-colors capitalize ${
-                activeTab === tab 
-                  ? 'border-[#046BD2] text-[#046BD2]' 
+              key={tab.key}
+              onClick={() => handleTabChange(tab.key)}
+              className={`px-5 py-3 text-sm font-semibold border-b-2 whitespace-nowrap transition-colors ${
+                activeTab === tab.key
+                  ? 'border-[#046BD2] text-[#046BD2]'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              {tab === 'all' ? 'All Ads' : tab}
-              <span className="ml-2 bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-[11px]">
-                {tab === 'all' ? ads.length : ads.filter(a => a.status === tab).length}
+              {tab.label}
+              <span className={`ml-2 py-0.5 px-2 rounded-full text-[11px] ${
+                activeTab === tab.key ? 'bg-blue-100 text-[#046BD2]' : 'bg-gray-100 text-gray-500'
+              }`}>
+                {counts[tab.key] ?? 0}
               </span>
             </button>
           ))}
         </div>
 
-        {/* Ads Grid/List */}
-        {filteredAds.length === 0 ? (
-           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 flex flex-col items-center justify-center text-center">
-             <div className="bg-gray-50 p-5 rounded-full mb-4 text-gray-300">
-               <Tag size={48} />
-             </div>
-             <h3 className="text-xl font-semibold text-gray-900 mb-2">No ads found</h3>
-             <p className="text-gray-500 mb-6 max-w-md">You don't have any advertisements matching this status. Try posting a new ad to get started.</p>
-             <Link 
-               href="/postadd" 
-               className="inline-flex items-center text-[#046BD2] bg-blue-50 hover:bg-blue-100 px-5 py-2.5 rounded-lg font-semibold transition-colors"
-             >
-               Post Your First Ad
-             </Link>
-           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredAds.map((ad) => (
-              <div key={ad.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col group hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300">
-                {/* Image Area */}
-                <div className="relative h-48 w-full bg-gray-200 overflow-hidden">
-                  <img src={ad.image} alt={ad.title} className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500" />
-                  <div className="absolute top-3 left-3">
-                    {getStatusBadge(ad.status)}
-                  </div>
-                  {/* Overlay Actions on Hover */}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                    <button className="bg-white text-gray-800 p-2.5 rounded-full hover:bg-[#046BD2] hover:text-white transition-colors" title="Edit">
-                      <Edit2 size={18} />
-                    </button>
-                    <button 
-                      onClick={() => deleteAd(ad.id)}
-                      className="bg-white text-gray-800 p-2.5 rounded-full hover:bg-red-500 hover:text-white transition-colors" 
-                      title="Delete"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Content Area */}
-                <div className="p-5 flex flex-col flex-grow">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-bold text-[#046BD2] text-[20px] mb-1 flex-grow">{ad.price}</h3>
-                    <button className="text-gray-400 hover:text-gray-700 transition-colors">
-                      <MoreVertical size={20} />
-                    </button>
-                  </div>
-                  <h4 className="text-[15px] font-semibold text-gray-800 line-clamp-2 mb-3 min-h-[44px]">
-                    {ad.title}
-                  </h4>
-                  
-                  {/* Meta Details */}
-                  <div className="mt-auto space-y-3">
-                    <div className="flex items-center text-[13px] text-gray-500 gap-2">
-                      <Tag size={14} className="flex-shrink-0" />
-                      <span className="truncate">{ad.category}</span>
-                      <span className="mx-1">•</span>
-                      <span className="truncate">Ref: {ad.id}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-[13px] text-gray-500 border-t border-gray-100 pt-3 mt-3">
-                      <div className="flex items-center gap-1.5">
-                        <Calendar size={14} />
-                        <span>{ad.date}</span>
-                      </div>
-                      <div className="flex items-center space-x-3 font-medium">
-                        <span className="flex items-center gap-1" title="Views">
-                          <Eye size={14} /> {ad.views}
-                        </span>
-                        <span className="flex items-center gap-1 text-red-500" title="Favorites">
-                          <Heart size={14} className="fill-red-50 text-red-500" /> {ad.likes}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Optional Footer Action */}
-                {ad.status === 'active' && (
-                  <div className="bg-blue-50/50 border-t border-blue-50 p-3">
-                    <button className="w-full flex items-center justify-center py-2 text-sm font-semibold text-[#046BD2] hover:bg-[#046BD2] hover:text-white rounded-md bg-white border border-[#046BD2] transition-colors">
-                      <Megaphone size={16} className="mr-2" />
-                      Boost Ad Position
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
+        {/* ── Error state ─────────────────────────────────────────────────── */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-6 flex items-center gap-4 mb-6">
+            <AlertCircle size={24} className="text-red-500 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="font-semibold text-red-700">Something went wrong</p>
+              <p className="text-sm text-red-500 mt-0.5">{error}</p>
+            </div>
+            <button
+              onClick={() => fetchPosts(activeTab, page)}
+              className="flex items-center gap-2 text-sm font-semibold text-red-600 hover:text-red-800"
+            >
+              <RefreshCw size={16} /> Retry
+            </button>
           </div>
         )}
-      </div>
+
+        {/* ── Loading skeleton ─────────────────────────────────────────────── */}
+        {loading && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
+          </div>
+        )}
+
+        {/* ── Empty state ─────────────────────────────────────────────────── */}
+        {!loading && !error && posts.length === 0 && (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-20 flex flex-col items-center text-center px-6">
+            <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-5 border border-gray-100">
+              <Package size={40} className="text-gray-300" strokeWidth={1.5} />
+            </div>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">No ads found</h3>
+            <p className="text-gray-500 text-sm max-w-xs mb-6">
+              {activeTab === 'all'
+                ? "You haven't posted any ads yet. Start selling today!"
+                : `You have no ${activeTab} ads right now.`}
+            </p>
+            <Link
+              href="/postadd"
+              className="inline-flex items-center gap-2 bg-[#046BD2] hover:bg-[#035bb3] text-white font-bold px-6 py-3 rounded-xl transition-all hover:-translate-y-0.5 shadow-md shadow-blue-500/20 text-sm"
+            >
+              <PlusCircle size={16} /> Post Your First Ad
+            </Link>
+          </div>
+        )}
+
+        {/* ── Ads grid ────────────────────────────────────────────────────── */}
+        {!loading && !error && posts.length > 0 && (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {posts.map((post) => (
+                <AdCard
+                  key={post._id}
+                  post={post}
+                  onToggle={handleToggle}
+                  onDelete={handleDeleteRequest}
+                  actionLoading={actionLoading}
+                />
+              ))}
+            </div>
+
+            {/* ── Pagination ─────────────────────────────────────────────── */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-3 mt-10">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-white hover:border-[#046BD2] hover:text-[#046BD2] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <span className="text-sm font-semibold text-gray-600 px-3">
+                  Page {page} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-white hover:border-[#046BD2] hover:text-[#046BD2] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </main>
 
       <Footer />
-    </main>
+
+      {/* ── Delete confirmation modal ──────────────────────────────────────── */}
+      {deleteTarget && (
+        <DeleteModal
+          onConfirm={handleDeleteConfirm}
+          onCancel={handleDeleteCancel}
+          loading={deleteLoading}
+        />
+      )}
+
+      {/* ── Toast ─────────────────────────────────────────────────────────── */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
+      {/* ── Animations ────────────────────────────────────────────────────── */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes scale-in {
+          from { opacity: 0; transform: scale(0.92); }
+          to   { opacity: 1; transform: scale(1); }
+        }
+        @keyframes slide-up {
+          from { opacity: 0; transform: translateY(16px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .animate-scale-in { animation: scale-in 0.18s ease-out forwards; }
+        .animate-slide-up  { animation: slide-up 0.2s ease-out forwards; }
+      `}} />
+    </div>
   );
 }

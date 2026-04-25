@@ -1,4 +1,4 @@
-import { createPost, getPosts, getPostById } from "./post.service.js";
+import { createPost, getPosts, getPostById, getMyPosts, updatePost, deletePost } from "./post.service.js";
 
 /**
  * createPostHandler
@@ -6,7 +6,6 @@ import { createPost, getPosts, getPostById } from "./post.service.js";
  */
 export const createPostHandler = async (req, res) => {
   try {
-    // req.user._id is heavily reliant on the authentication middleware
     const userId = req.user._id;
 
     if (!userId) {
@@ -37,7 +36,6 @@ export const createPostHandler = async (req, res) => {
  */
 export const getPostsHandler = async (req, res) => {
   try {
-    // Extract everything from req.query and pass to the service, injecting required country
     const result = await getPosts({ ...req.query, country: req.country });
 
     return res.status(200).json({
@@ -65,7 +63,7 @@ export const getPostsHandler = async (req, res) => {
 export const getPostByIdHandler = async (req, res) => {
   try {
     const post = await getPostById(req.params.id, req.country);
-    
+
     return res.status(200).json({
       success: true,
       data: post,
@@ -74,6 +72,75 @@ export const getPostByIdHandler = async (req, res) => {
     return res.status(err.statusCode || 500).json({
       success: false,
       message: err.message || "Failed to fetch post.",
+    });
+  }
+};
+
+/**
+ * getMyPostsHandler
+ * Handles GET /api/posts/my — returns posts owned by the authenticated user.
+ */
+export const getMyPostsHandler = async (req, res) => {
+  try {
+    const result = await getMyPosts(req.user._id, req.country, req.query);
+
+    return res.status(200).json({
+      success: true,
+      message: "Your posts fetched successfully.",
+      data: {
+        posts: result.posts,
+        total: result.total,
+        page: result.page,
+        totalPages: result.totalPages,
+        counts: result.counts,
+      },
+    });
+  } catch (err) {
+    return res.status(err.statusCode || 500).json({
+      success: false,
+      message: err.message || "Failed to fetch your posts.",
+    });
+  }
+};
+
+/**
+ * updatePostHandler
+ * Handles PUT /api/posts/:id — updates an owned post (title, description, price, isActive).
+ */
+export const updatePostHandler = async (req, res) => {
+  try {
+    const updated = await updatePost(req.params.id, req.user._id, req.country, req.body);
+
+    return res.status(200).json({
+      success: true,
+      message: "Post updated successfully.",
+      data: updated,
+    });
+  } catch (err) {
+    return res.status(err.statusCode || 500).json({
+      success: false,
+      message: err.message || "Failed to update post.",
+    });
+  }
+};
+
+/**
+ * deletePostHandler
+ * Handles DELETE /api/posts/:id — permanently removes an owned post.
+ */
+export const deletePostHandler = async (req, res) => {
+  try {
+    const result = await deletePost(req.params.id, req.user._id, req.country);
+
+    return res.status(200).json({
+      success: true,
+      message: "Post deleted successfully.",
+      data: result,
+    });
+  } catch (err) {
+    return res.status(err.statusCode || 500).json({
+      success: false,
+      message: err.message || "Failed to delete post.",
     });
   }
 };
