@@ -9,6 +9,7 @@ import userRoutes from "./routes/userRoutes.js";
 import adminRoutes from "./modules/admin/admin.routes.js";
 import { categoryPublicRouter, categoryAdminRouter } from "./modules/category/category.routes.js";
 import postRoutes from "./modules/post/post.routes.js";
+import searchRoutes from "./modules/post/search.routes.js";
 import wishlistRoutes from "./modules/wishlist/wishlist.routes.js";
 import passport from "passport";
 import "./config/passport.js";
@@ -47,6 +48,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/admin/categories", categoryAdminRouter);
 app.use("/api/categories", categoryPublicRouter);
 app.use("/api/posts", postRoutes);
+app.use("/api/search", searchRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 
 app.get("/", (req, res) => {

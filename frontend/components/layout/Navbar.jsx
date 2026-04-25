@@ -3,9 +3,10 @@
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { Search, MapPin, Bell, Menu, User, PlusCircle, MessageCircle } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLocationStore } from '../../store/useLocationStore';
+import SearchBar from './SearchBar';
 
 // Load LocationSearch client-side only (Google Maps requires browser APIs)
 const LocationSearch = dynamic(
@@ -27,6 +28,7 @@ export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, isLoggedIn, logout, hydrate: hydrateAuth } = useAuthStore();
   const { name: locationName, isSet, hydrate: hydrateLocation } = useLocationStore();
+  const searchBarRef = useRef(null);
 
   useEffect(() => {
     hydrateAuth();
@@ -83,19 +85,21 @@ export default function Navbar() {
                 <LocationSearch placeholder="Search location..." />
               </div>
 
-              {/* Keyword search */}
-              <div className="flex-1 relative flex items-center hover:bg-gray-50/50 transition-colors focus-within:bg-white rounded-r-full">
-                <input
-                  type="text"
-                  placeholder="Find Cars, Mobile Phones and more..."
-                  className="w-full h-full bg-transparent pl-5 pr-10 text-[15px] text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-0"
-                  suppressHydrationWarning
-                />
-              </div>
+              {/* Keyword search with smart autocomplete */}
+              <SearchBar
+                ref={searchBarRef}
+                className="flex-1 relative flex items-center hover:bg-gray-50/50 transition-colors focus-within:bg-white rounded-r-full"
+                inputClassName=""
+              />
 
               {/* Search button */}
               <div className="p-1 h-full flex items-center">
-                <button suppressHydrationWarning className="bg-[#046BD2] hover:bg-[#035bb3] text-white px-7 rounded-full transition-all duration-300 h-full flex items-center justify-center shadow hover:shadow-lg transform hover:-translate-y-[1px]">
+                <button
+                  suppressHydrationWarning
+                  type="button"
+                  onClick={() => searchBarRef.current?.submit()}
+                  className="bg-[#046BD2] hover:bg-[#035bb3] text-white px-7 rounded-full transition-all duration-300 h-full flex items-center justify-center shadow hover:shadow-lg transform hover:-translate-y-[1px]"
+                >
                   <Search size={18} className="font-bold" />
                 </button>
               </div>
@@ -230,14 +234,12 @@ export default function Navbar() {
           <div className="p-4 space-y-4 max-h-[calc(100vh-120px)] overflow-y-auto">
 
             {/* Keyword search — mobile */}
-            <div className="flex relative h-[48px] rounded-full shadow-sm hover:shadow-md border border-gray-200 bg-white transition-all duration-300 focus-within:border-gray-300 focus-within:shadow-md">
-              <input
-                type="text"
+            <div className="relative h-[48px] rounded-full shadow-sm hover:shadow-md border border-gray-200 bg-white transition-all duration-300 focus-within:border-gray-300 focus-within:shadow-md flex items-center overflow-visible">
+              <SearchBar
+                className="flex-1 h-full flex items-center overflow-visible"
                 placeholder="Find Cars, Mobile Phones..."
-                className="w-full h-full bg-transparent pl-5 pr-10 text-[15px] text-gray-800 focus:outline-none placeholder-gray-400"
-                suppressHydrationWarning
               />
-              <div className="p-1 h-full">
+              <div className="p-1 h-full flex-shrink-0">
                 <button suppressHydrationWarning className="bg-[#046BD2] hover:bg-[#035bb3] text-white px-6 rounded-full transition-all h-full flex items-center justify-center hover:shadow-md">
                   <Search size={18} className="font-bold" />
                 </button>
