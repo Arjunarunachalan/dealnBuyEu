@@ -65,7 +65,7 @@ export default function HeroCarousel() {
               <p className="text-lg md:text-xl text-white/90 mb-8 font-medium">
                 {slide.subtitle}
               </p>
-              <button className="bg-white text-gray-900 font-bold px-8 py-3 rounded-full hover:bg-gray-100 hover:scale-105 transition-transform shadow-lg">
+              <button suppressHydrationWarning className="bg-white text-gray-900 font-bold px-8 py-3 rounded-full hover:bg-gray-100 hover:scale-105 transition-transform shadow-lg">
                 {slide.buttonText}
               </button>
             </div>
@@ -74,14 +74,14 @@ export default function HeroCarousel() {
       </div>
 
       {/* Controls */}
-      <button 
+      <button suppressHydrationWarning
         onClick={prevSlide}
         className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
       >
         <ChevronLeft size={24} />
       </button>
 
-      <button 
+      <button suppressHydrationWarning
         onClick={nextSlide}
         className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
       >
@@ -91,7 +91,7 @@ export default function HeroCarousel() {
       {/* Indicators */}
       <div className="absolute bottom-4 left-1/2 -translate-y-1/2 -translate-x-1/2 flex space-x-2">
         {slides.map((_, idx) => (
-          <button
+          <button suppressHydrationWarning
             key={idx}
             onClick={() => setCurrentSlide(idx)}
             className={`w-3 h-3 rounded-full transition-colors ${

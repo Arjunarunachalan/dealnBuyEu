@@ -399,12 +399,6 @@ export default function ProfilePage() {
 
       <div className="flex-grow max-w-[1200px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 z-10 relative">
         
-        {/* Breadcrumb */}
-        <div className="flex items-center text-sm text-gray-500 mb-8 font-medium">
-          <Link href="/" className="hover:text-[#046BD2] transition-colors">Home</Link>
-          <ChevronRight size={14} className="mx-2" />
-          <span className="text-gray-900">My Account</span>
-        </div>
 
         <div className="flex flex-col lg:flex-row gap-8">
           

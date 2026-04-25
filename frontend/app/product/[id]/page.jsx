@@ -151,12 +151,6 @@ export default function ProductPage({ params }) {
       <Navbar />
       
       <main className="flex-grow max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-        {/* Breadcrumb */}
-        <div className="text-sm text-gray-500 mb-6 flex flex-wrap gap-1">
-          <Link href="/" className="hover:text-[#046BD2]">Home</Link> <span>/</span> 
-          <span className="text-gray-700">{categoryName}</span> <span>/</span> 
-          <span className="text-gray-900 font-medium truncate">{displayTitle}</span>
-        </div>
 
         <div className="flex flex-col lg:flex-row gap-8">
           

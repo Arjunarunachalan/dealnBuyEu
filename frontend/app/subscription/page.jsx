@@ -83,12 +83,6 @@ export default function SubscriptionPage() {
 
       <div className="flex-grow max-w-[1200px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 z-10 relative">
         
-        {/* Breadcrumb */}
-        <div className="flex items-center text-sm text-gray-500 mb-10">
-          <Link href="/" className="hover:text-[#046BD2] transition-colors">Home</Link>
-          <ChevronRight size={14} className="mx-2" />
-          <span className="text-[#046BD2] font-medium">Subscribe</span>
-        </div>
 
         {/* Header Section */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-10 mb-16">
