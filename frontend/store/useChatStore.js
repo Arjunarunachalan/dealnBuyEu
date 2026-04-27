@@ -102,8 +102,9 @@ const useChatStore = create((set, get) => ({
   },
 
   // ── Fetch messages for a conversation ──────────────────────────────────
-  fetchMessages: async (conversationId) => {
-    set({ isLoading: true, error: null });
+  // `silent` = true skips the loading spinner (used by background polling)
+  fetchMessages: async (conversationId, silent = false) => {
+    if (!silent) set({ isLoading: true, error: null });
     try {
       const res = await axiosInstance.get(`/chat/${conversationId}/messages`);
       set({ messages: res.data, isLoading: false });
@@ -111,10 +112,12 @@ const useChatStore = create((set, get) => ({
       if (_socket) _socket.emit("join_conversation", conversationId);
     } catch (error) {
       console.error("Error fetching messages:", error);
-      set({
-        error: error.response?.data?.message || "Failed to load messages",
-        isLoading: false,
-      });
+      if (!silent) {
+        set({
+          error: error.response?.data?.message || "Failed to load messages",
+          isLoading: false,
+        });
+      }
     }
   },
 

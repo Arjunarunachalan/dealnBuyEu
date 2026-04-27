@@ -28,6 +28,7 @@ export default function MessagesPage() {
     isLoading,
     initSocket,
     fetchConversations,
+    fetchMessages,
     setActiveConversation,
     sendMessage,
   } = useChatStore();
@@ -35,7 +36,8 @@ export default function MessagesPage() {
   const [messageText, setMessageText] = useState("");
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const messagesEndRef = useRef(null);
-  // Socket init — run ONCE per login session, never disconnect on unmount
+
+  // Socket init — run ONCE per login session
   useEffect(() => {
     if (!isLoggedIn) {
       router.push("/registration_login");
@@ -52,6 +54,19 @@ export default function MessagesPage() {
       fetchConversations();
     }
   }, [isLoggedIn, user]);
+
+  // ── LIVE POLLING: refetch messages every 3 seconds while a chat is open ──
+  // This guarantees real-time updates even if WebSocket has issues.
+  // The socket will still provide instant delivery when it works.
+  useEffect(() => {
+    if (!activeConversation?._id) return;
+
+    const interval = setInterval(() => {
+      fetchMessages(activeConversation._id, true); // silent=true, no loading spinner
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [activeConversation?._id]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
