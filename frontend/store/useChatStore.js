@@ -4,145 +4,121 @@ import axiosInstance from "../lib/axiosInstance";
 import { useAuthStore } from "./useAuthStore";
 
 // Socket connects to the same server as the API, just without /api
-const SOCKET_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api").replace(/\/api$/, "");
+const SOCKET_URL = (
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"
+).replace(/\/api$/, "");
 
-// Helper: process an incoming message
-const handleIncomingMessage = (message, get, set) => {
-  set((state) => {
-    const { activeConversation, messages, conversations } = state;
-    let newMessages = messages;
-
-    // If message belongs to the active conversation, add it to the message list
-    if (activeConversation && String(activeConversation._id) === String(message.conversationId)) {
-      const alreadyExists = messages.some(
-        (m) => (m._id === message._id) || 
-          (String(m._id).startsWith("temp-") && m.text === message.text && String(m.sender) === String(message.sender))
-      );
-
-      if (alreadyExists) {
-        const filtered = messages.filter(
-          (m) => !(String(m._id).startsWith("temp-") && m.text === message.text && String(m.sender) === String(message.sender))
-        );
-        if (!filtered.some((m) => m._id === message._id)) {
-          newMessages = [...filtered, message];
-        } else {
-          newMessages = filtered; // Just in case we filtered a temp message but the real one was already there
-        }
-      } else {
-        newMessages = [...messages, message];
-      }
-    }
-
-    // Update conversation sidebar
-    const updatedConversations = conversations.map((c) => {
-      if (String(c._id) === String(message.conversationId)) {
-        return { ...c, lastMessage: message, updatedAt: message.createdAt };
-      }
-      return c;
-    });
-    updatedConversations.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-
-    return {
-      messages: newMessages,
-      conversations: updatedConversations
-    };
-  });
-};
+// ── Module-level singleton ──────────────────────────────────────────────────
+// Keep the socket OUTSIDE of Zustand so React re-renders can never reset it.
+let _socket = null;
+let _userId = null;
 
 const useChatStore = create((set, get) => ({
-  socket: null,
   conversations: [],
   activeConversation: null,
   messages: [],
   isLoading: false,
   error: null,
 
-  // Initialize socket connection — called ONCE per session
+  // ── Initialize socket (idempotent — safe to call many times) ────────────
   initSocket: (userId) => {
-    const { socket } = get();
-    if (socket) return; // Already exists, don't create another
+    // If already initialised with the same user, skip
+    if (_socket && _userId === userId) return;
 
-    const newSocket = io(SOCKET_URL, {
+    // Tear down any old socket first
+    if (_socket) {
+      _socket.removeAllListeners();
+      _socket.disconnect();
+    }
+
+    _userId = userId;
+
+    const sock = io(SOCKET_URL, {
       withCredentials: true,
       transports: ["websocket", "polling"],
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
     });
 
-    newSocket.on("connect", () => {
-      console.log("Socket connected:", newSocket.id);
-      newSocket.emit("register", userId);
+    // ── On every (re)connect, register + join rooms ─────────────────────
+    sock.on("connect", () => {
+      console.log("[WS] connected:", sock.id);
+      sock.emit("register", userId);
 
-      // Auto-join all conversation rooms so we receive live messages
+      // Re-join every conversation room (rooms are cleared on reconnect)
       const { conversations } = get();
-      conversations.forEach((conv) => {
-        newSocket.emit("join_conversation", conv._id);
-      });
+      conversations.forEach((c) => sock.emit("join_conversation", c._id));
     });
 
-    // Message received via ROOM broadcast (sender + receiver in same room)
-    newSocket.on("receive_message", (message) => {
-      handleIncomingMessage(message, get, set);
+    // ── Incoming message via ROOM broadcast ──────────────────────────────
+    sock.on("receive_message", (msg) => {
+      console.log("[WS] receive_message:", msg.text);
+      _handleMsg(msg, set);
     });
 
-    // Message received via DIRECT notification (fallback when not in room)
-    newSocket.on("new_message_notification", (message) => {
-      handleIncomingMessage(message, get, set);
+    // ── Incoming message via DIRECT notification ─────────────────────────
+    sock.on("new_message_notification", (msg) => {
+      console.log("[WS] new_message_notification:", msg.text);
+      _handleMsg(msg, set);
     });
 
-    newSocket.on("disconnect", () => {
-      console.log("Socket disconnected, will auto-reconnect...");
+    sock.on("disconnect", (reason) => {
+      console.log("[WS] disconnected:", reason);
     });
 
-    set({ socket: newSocket });
+    _socket = sock;
   },
 
-  // Disconnect socket
+  // ── Disconnect socket (called on logout, NOT on component unmount) ─────
   disconnectSocket: () => {
-    const { socket } = get();
-    if (socket) {
-      socket.disconnect();
-      set({ socket: null });
+    if (_socket) {
+      _socket.removeAllListeners();
+      _socket.disconnect();
+      _socket = null;
+      _userId = null;
     }
   },
 
-  // Fetch all conversations for the user
+  // ── Fetch all conversations ────────────────────────────────────────────
   fetchConversations: async () => {
     set({ isLoading: true, error: null });
     try {
       const res = await axiosInstance.get("/chat/conversations");
       set({ conversations: res.data, isLoading: false });
 
-      // Join all conversation rooms so we get live messages
-      const { socket } = get();
-      if (socket) {
-        res.data.forEach((conv) => {
-          socket.emit("join_conversation", conv._id);
-        });
+      // Join every room (the socket may already be connected)
+      if (_socket) {
+        res.data.forEach((c) => _socket.emit("join_conversation", c._id));
       }
     } catch (error) {
       console.error("Error fetching conversations:", error);
-      set({ error: error.response?.data?.message || "Failed to load conversations", isLoading: false });
+      set({
+        error:
+          error.response?.data?.message || "Failed to load conversations",
+        isLoading: false,
+      });
     }
   },
 
-  // Fetch messages for a specific conversation
+  // ── Fetch messages for a conversation ──────────────────────────────────
   fetchMessages: async (conversationId) => {
     set({ isLoading: true, error: null });
     try {
       const res = await axiosInstance.get(`/chat/${conversationId}/messages`);
       set({ messages: res.data, isLoading: false });
 
-      // Ensure we've joined this conversation room
-      const { socket } = get();
-      if (socket) {
-        socket.emit("join_conversation", conversationId);
-      }
+      if (_socket) _socket.emit("join_conversation", conversationId);
     } catch (error) {
       console.error("Error fetching messages:", error);
-      set({ error: error.response?.data?.message || "Failed to load messages", isLoading: false });
+      set({
+        error: error.response?.data?.message || "Failed to load messages",
+        isLoading: false,
+      });
     }
   },
 
-  // Set active conversation
+  // ── Set active conversation ────────────────────────────────────────────
   setActiveConversation: (conversation) => {
     set({ activeConversation: conversation });
     if (conversation) {
@@ -152,23 +128,23 @@ const useChatStore = create((set, get) => ({
     }
   },
 
-  // Start or get conversation for a post
+  // ── Start or get a conversation ────────────────────────────────────────
   startConversation: async (postId, sellerId) => {
     set({ isLoading: true, error: null });
     try {
-      const res = await axiosInstance.post("/chat/start", { postId, sellerId });
+      const res = await axiosInstance.post("/chat/start", {
+        postId,
+        sellerId,
+      });
       const conversation = res.data;
 
-      const { conversations, socket } = get();
+      const { conversations } = get();
       const exists = conversations.find((c) => c._id === conversation._id);
       if (!exists) {
         set({ conversations: [conversation, ...conversations] });
       }
 
-      // Join this new conversation room
-      if (socket) {
-        socket.emit("join_conversation", conversation._id);
-      }
+      if (_socket) _socket.emit("join_conversation", conversation._id);
 
       set({ activeConversation: conversation, isLoading: false });
       get().fetchMessages(conversation._id);
@@ -176,19 +152,26 @@ const useChatStore = create((set, get) => ({
       return conversation;
     } catch (error) {
       console.error("Error starting conversation:", error);
-      set({ error: error.response?.data?.message || "Failed to start conversation", isLoading: false });
+      set({
+        error:
+          error.response?.data?.message || "Failed to start conversation",
+        isLoading: false,
+      });
       return null;
     }
   },
 
-  // Send message
+  // ── Send message ───────────────────────────────────────────────────────
   sendMessage: (text, receiverId) => {
-    const { socket, activeConversation } = get();
+    const { activeConversation } = get();
     const userId = useAuthStore.getState().user?._id;
 
-    if (!socket || !activeConversation || !userId) return;
+    if (!_socket || !activeConversation || !userId) {
+      console.warn("[WS] sendMessage blocked — socket/conv/user missing");
+      return;
+    }
 
-    socket.emit("send_message", {
+    _socket.emit("send_message", {
       conversationId: activeConversation._id,
       senderId: userId,
       receiverId,
@@ -196,5 +179,61 @@ const useChatStore = create((set, get) => ({
     });
   },
 }));
+
+// ── Pure helper — processes an incoming message ──────────────────────────────
+// Uses Zustand's functional `set` so the state snapshot is always fresh.
+function _handleMsg(message, set) {
+  set((state) => {
+    const { activeConversation, messages, conversations } = state;
+    let newMessages = messages;
+
+    // Only append if the message belongs to the currently-open conversation
+    if (
+      activeConversation &&
+      String(activeConversation._id) === String(message.conversationId)
+    ) {
+      const isDuplicate = messages.some((m) => m._id === message._id);
+      const isOptimistic = messages.some(
+        (m) =>
+          String(m._id).startsWith("temp-") &&
+          m.text === message.text &&
+          String(m.sender) === String(message.sender)
+      );
+
+      if (isDuplicate) {
+        // Already have the real message — do nothing
+        newMessages = messages;
+      } else if (isOptimistic) {
+        // Replace the temp placeholder with the real DB message
+        newMessages = [
+          ...messages.filter(
+            (m) =>
+              !(
+                String(m._id).startsWith("temp-") &&
+                m.text === message.text &&
+                String(m.sender) === String(message.sender)
+              )
+          ),
+          message,
+        ];
+      } else {
+        // Brand-new message from the other person
+        newMessages = [...messages, message];
+      }
+    }
+
+    // Update conversation sidebar (last message + sort)
+    const updatedConversations = conversations.map((c) =>
+      String(c._id) === String(message.conversationId)
+        ? { ...c, lastMessage: message, updatedAt: message.createdAt }
+        : c
+    );
+    updatedConversations.sort(
+      (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
+    );
+
+    return { messages: newMessages, conversations: updatedConversations };
+  });
+}
 
 export default useChatStore;
