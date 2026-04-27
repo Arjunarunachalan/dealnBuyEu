@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Navbar from '../../components/layout/Navbar';
-import Footer from '../../components/layout/Footer';
-import Stepper from '../../components/postadd/Stepper';
-import CategorySelector from '../../components/postadd/CategorySelector';
-import SubcategorySelector from '../../components/postadd/SubcategorySelector';
-import ProductDetailsForm from '../../components/postadd/ProductDetailsForm';
+import Navbar from '@/components/layout/Navbar';
+import Footer from '@/components/layout/Footer';
+import Stepper from '@/components/postadd/Stepper';
+import CategorySelector from '@/components/postadd/CategorySelector';
+import SubcategorySelector from '@/components/postadd/SubcategorySelector';
+import ProductDetailsForm from '@/components/postadd/ProductDetailsForm';
 
 export default function AddPostPage() {
   const router = useRouter();
