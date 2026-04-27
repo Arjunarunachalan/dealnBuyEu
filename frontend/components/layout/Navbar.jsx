@@ -110,12 +110,9 @@ export default function Navbar() {
 
           {/* Right action icons */}
           <div className="hidden md:flex items-center space-x-6">
-            <button suppressHydrationWarning className="text-gray-600 hover:text-[#046BD2] transition-colors relative">
+            <Link href="/messages" suppressHydrationWarning className="text-gray-600 hover:text-[#046BD2] transition-colors relative">
               <MessageCircle size={24} />
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
-                1
-              </span>
-            </button>
+            </Link>
             <Link href="/notifications" className="text-gray-600 hover:text-[#046BD2] transition-colors relative">
               <Bell size={24} />
               <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
@@ -258,10 +255,9 @@ export default function Navbar() {
 
             {/* Quick Links */}
             <div className="border-t border-gray-100 pt-4 flex flex-col space-y-2">
-              <Link href="#" className="flex items-center text-gray-700 p-2 sm:p-3 hover:bg-gray-50 rounded-md transition-colors">
+              <Link href="/messages" className="flex items-center text-gray-700 p-2 sm:p-3 hover:bg-gray-50 rounded-md transition-colors">
                 <MessageCircle size={22} className="mr-3 text-[#046BD2]" />
                 <span className="flex-1 font-medium text-[15px]">Chats</span>
-                <span className="bg-red-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-full">1</span>
               </Link>
               <Link href="/notifications" className="flex items-center text-gray-700 p-2 sm:p-3 hover:bg-gray-50 rounded-md transition-colors">
                 <Bell size={22} className="mr-3 text-[#046BD2]" />

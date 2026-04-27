@@ -8,6 +8,7 @@ import Footer from '../../../components/layout/Footer';
 import api from '../../../lib/axiosInstance';
 import { useWishlistStore } from '../../../store/useWishlistStore';
 import { useAuthStore } from '../../../store/useAuthStore';
+import useChatStore from '../../../store/useChatStore';
 import { useRouter } from 'next/navigation';
 
 export default function ProductPage({ params }) {
@@ -25,8 +26,15 @@ export default function ProductPage({ params }) {
 
   // Wishlist state
   const { isWishlisted, toggle: toggleWishlist, fetchWishlistIds, isFetched } = useWishlistStore();
-  const { isLoggedIn } = useAuthStore();
+  const { isLoggedIn, user: currentUser } = useAuthStore();
+  const { startConversation } = useChatStore();
+  const [isStartingChat, setIsStartingChat] = useState(false);
   const wishlisted = postId ? isWishlisted(postId) : false;
+
+  // Derived: is this post owned by the current logged-in user?
+  const isOwnPost = isLoggedIn && product && (
+    (product.userId?._id || product.userId)?.toString() === currentUser?._id?.toString()
+  );
 
   useEffect(() => {
     if (isLoggedIn && !isFetched) {
@@ -94,6 +102,27 @@ export default function ProductPage({ params }) {
       return;
     }
     await toggleWishlist(postId);
+  };
+
+  const handleStartChat = async () => {
+    if (!isLoggedIn) {
+      router.push('/registration_login');
+      return;
+    }
+    
+    if (isStartingChat) return;
+    setIsStartingChat(true);
+    
+    try {
+      const sellerId = product.userId?._id || product.userId;
+      await startConversation(postId, sellerId);
+      router.push('/messages');
+    } catch (error) {
+      console.error("Failed to start chat", error);
+      alert("Could not start chat. Please try again.");
+    } finally {
+      setIsStartingChat(false);
+    }
   };
 
   if (loading) {
@@ -335,11 +364,28 @@ export default function ProductPage({ params }) {
                 </div>
               </div>
 
-              {/* Chat Button */}
-              <button className="w-full bg-[#046BD2] hover:bg-[#035bb3] text-white font-bold py-3.5 px-4 rounded-lg shadow-md flex justify-center items-center transition-all hover:-translate-y-0.5">
-                <MessageCircle size={22} className="mr-2.5" />
-                Chat with Seller
-              </button>
+              {/* Chat / Edit Button */}
+              {isOwnPost ? (
+                <Link
+                  href="/myads"
+                  className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3.5 px-4 rounded-lg flex justify-center items-center transition-all border border-gray-200"
+                >
+                  This is your ad
+                </Link>
+              ) : (
+                <button 
+                  onClick={handleStartChat}
+                  disabled={isStartingChat}
+                  className="w-full bg-[#046BD2] hover:bg-[#035bb3] text-white font-bold py-3.5 px-4 rounded-lg shadow-md flex justify-center items-center transition-all hover:-translate-y-0.5 disabled:opacity-70 disabled:hover:translate-y-0"
+                >
+                  {isStartingChat ? (
+                    <Loader2 size={22} className="mr-2.5 animate-spin" />
+                  ) : (
+                    <MessageCircle size={22} className="mr-2.5" />
+                  )}
+                  {isStartingChat ? 'Starting Chat...' : 'Chat with Seller'}
+                </button>
+              )}
             </div>
 
             {/* Location & Map */}

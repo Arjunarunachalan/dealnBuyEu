@@ -15,6 +15,9 @@ import passport from "passport";
 import "./config/passport.js";
 import { countryGateway } from "./middleware/countryGateway.js";
 import legalPageRoutes from "./routes/legalPageRoutes.js";
+import chatRoutes from "./modules/chat/chat.routes.js";
+import http from "http";
+import initializeSocket from "./socket.js";
 
 // Load env vars
 dotenv.config();
@@ -23,6 +26,11 @@ dotenv.config();
 connectDB();
 
 const app = express();
+const server = http.createServer(app);
+
+// Initialize Socket.io
+const io = initializeSocket(server);
+app.set("io", io);
 
 // Middleware
 app.use(cors({
@@ -50,6 +58,7 @@ app.use("/api/categories", categoryPublicRouter);
 app.use("/api/posts", postRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/wishlist", wishlistRoutes);
+app.use("/api/chat", chatRoutes);
 
 app.get("/", (req, res) => {
   res.send("API is running...");
@@ -57,6 +66,6 @@ app.get("/", (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
