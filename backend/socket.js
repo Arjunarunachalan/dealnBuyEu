@@ -18,8 +18,9 @@ const initializeSocket = (server) => {
 
     // Register user
     socket.on("register", (userId) => {
-      connectedUsers.set(userId, socket.id);
-      console.log(`User ${userId} registered with socket ${socket.id}`);
+      const uid = String(userId);
+      connectedUsers.set(uid, socket.id);
+      console.log(`User ${uid} registered with socket ${socket.id}`);
     });
 
     // Join a conversation room
@@ -31,7 +32,8 @@ const initializeSocket = (server) => {
     // Handle sending message
     socket.on("send_message", async (data) => {
       try {
-        const { conversationId, senderId, text, receiverId } = data;
+        let { conversationId, senderId, text, receiverId } = data;
+        receiverId = String(receiverId);
 
         // Save message to DB
         const newMessage = await Message.create({

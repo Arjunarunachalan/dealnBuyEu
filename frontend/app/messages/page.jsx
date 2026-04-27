@@ -67,7 +67,7 @@ export default function MessagesPage() {
     const receiver = getOtherParticipant(activeConversation.participants, user?._id);
     if (!receiver) return;
 
-    const receiverId = receiver._id || receiver;
+    const receiverId = String(receiver._id || receiver);
     const trimmedText = messageText.trim();
 
     // Optimistic UI — show message immediately without waiting for socket echo

@@ -107,7 +107,7 @@ const useChatStore = create((set, get) => ({
 
       // Join all conversation rooms so we get live messages
       const { socket } = get();
-      if (socket?.connected) {
+      if (socket) {
         res.data.forEach((conv) => {
           socket.emit("join_conversation", conv._id);
         });
@@ -127,7 +127,7 @@ const useChatStore = create((set, get) => ({
 
       // Ensure we've joined this conversation room
       const { socket } = get();
-      if (socket?.connected) {
+      if (socket) {
         socket.emit("join_conversation", conversationId);
       }
     } catch (error) {
@@ -160,7 +160,7 @@ const useChatStore = create((set, get) => ({
       }
 
       // Join this new conversation room
-      if (socket?.connected) {
+      if (socket) {
         socket.emit("join_conversation", conversation._id);
       }
 
