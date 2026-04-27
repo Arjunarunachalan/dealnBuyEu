@@ -51,13 +51,10 @@ const useChatStore = create((set, get) => ({
   isLoading: false,
   error: null,
 
-  // Initialize socket connection
+  // Initialize socket connection — called ONCE per session
   initSocket: (userId) => {
     const { socket } = get();
-    if (socket?.connected) return; // Already connected
-
-    // Disconnect stale socket if exists
-    if (socket) socket.disconnect();
+    if (socket) return; // Already exists, don't create another
 
     const newSocket = io(SOCKET_URL, {
       withCredentials: true,

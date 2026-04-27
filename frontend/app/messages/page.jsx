@@ -27,7 +27,6 @@ export default function MessagesPage() {
     messages,
     isLoading,
     initSocket,
-    disconnectSocket,
     fetchConversations,
     setActiveConversation,
     sendMessage,
@@ -36,20 +35,26 @@ export default function MessagesPage() {
   const [messageText, setMessageText] = useState("");
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const messagesEndRef = useRef(null);
+  const socketInitialized = useRef(false);
 
+  // Socket init — run ONCE per login session, never disconnect on unmount
   useEffect(() => {
     if (!isLoggedIn) {
       router.push("/registration_login");
       return;
     }
-    if (user?._id) {
+    if (user?._id && !socketInitialized.current) {
+      socketInitialized.current = true;
       initSocket(user._id);
+    }
+  }, [user, isLoggedIn]);
+
+  // Fetch conversations when page loads
+  useEffect(() => {
+    if (isLoggedIn && user?._id) {
       fetchConversations();
     }
-    return () => {
-      disconnectSocket();
-    };
-  }, [user, isLoggedIn]);
+  }, [isLoggedIn, user]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
