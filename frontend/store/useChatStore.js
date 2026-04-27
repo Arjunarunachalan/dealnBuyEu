@@ -183,8 +183,19 @@ const useChatStore = create((set, get) => ({
 // ── Pure helper — processes an incoming message ──────────────────────────────
 // Uses Zustand's functional `set` so the state snapshot is always fresh.
 function _handleMsg(message, set) {
+  console.log("[WS] _handleMsg called with:", message.text, "convId:", message.conversationId);
+  
   set((state) => {
     const { activeConversation, messages, conversations } = state;
+    
+    console.log("[WS] Current state:", {
+      hasActiveConv: !!activeConversation,
+      activeConvId: activeConversation?._id,
+      msgConvId: message.conversationId,
+      match: activeConversation ? String(activeConversation._id) === String(message.conversationId) : false,
+      currentMsgCount: messages.length,
+    });
+    
     let newMessages = messages;
 
     // Only append if the message belongs to the currently-open conversation
@@ -200,11 +211,12 @@ function _handleMsg(message, set) {
           String(m.sender) === String(message.sender)
       );
 
+      console.log("[WS] Dedup check:", { isDuplicate, isOptimistic });
+
       if (isDuplicate) {
-        // Already have the real message — do nothing
         newMessages = messages;
+        console.log("[WS] SKIPPED: duplicate");
       } else if (isOptimistic) {
-        // Replace the temp placeholder with the real DB message
         newMessages = [
           ...messages.filter(
             (m) =>
@@ -216,10 +228,13 @@ function _handleMsg(message, set) {
           ),
           message,
         ];
+        console.log("[WS] REPLACED optimistic message");
       } else {
-        // Brand-new message from the other person
         newMessages = [...messages, message];
+        console.log("[WS] APPENDED new message. New count:", newMessages.length);
       }
+    } else {
+      console.log("[WS] SKIPPED: conversation mismatch or no active conversation");
     }
 
     // Update conversation sidebar (last message + sort)
