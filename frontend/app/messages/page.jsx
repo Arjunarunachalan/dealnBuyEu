@@ -35,16 +35,13 @@ export default function MessagesPage() {
   const [messageText, setMessageText] = useState("");
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const messagesEndRef = useRef(null);
-  const socketInitialized = useRef(false);
-
   // Socket init — run ONCE per login session, never disconnect on unmount
   useEffect(() => {
     if (!isLoggedIn) {
       router.push("/registration_login");
       return;
     }
-    if (user?._id && !socketInitialized.current) {
-      socketInitialized.current = true;
+    if (user?._id) {
       initSocket(user._id);
     }
   }, [user, isLoggedIn]);

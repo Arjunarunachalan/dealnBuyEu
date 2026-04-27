@@ -31,6 +31,7 @@ const initializeSocket = (server) => {
 
     // Handle sending message
     socket.on("send_message", async (data) => {
+      console.log(`[Socket] received send_message:`, data);
       try {
         let { conversationId, senderId, text, receiverId } = data;
         receiverId = String(receiverId);
@@ -42,6 +43,7 @@ const initializeSocket = (server) => {
           text,
           readBy: [senderId],
         });
+        console.log(`[Socket] Message saved to DB: ${newMessage._id}`);
 
         // Update conversation last message
         await Conversation.findByIdAndUpdate(conversationId, {
@@ -49,12 +51,15 @@ const initializeSocket = (server) => {
         });
 
         // Emit message to the conversation room
+        console.log(`[Socket] Emitting receive_message to room: ${conversationId}`);
         io.to(conversationId).emit("receive_message", newMessage);
 
         // If receiver is connected but not in the room, we can emit a notification to them directly
         const receiverSocketId = connectedUsers.get(receiverId);
+        console.log(`[Socket] Receiver ${receiverId} socket ID: ${receiverSocketId || "NOT CONNECTED"}`);
+        
         if (receiverSocketId) {
-          // You could emit a generic notification event here
+          console.log(`[Socket] Emitting new_message_notification to socket: ${receiverSocketId}`);
           io.to(receiverSocketId).emit("new_message_notification", newMessage);
         }
       } catch (error) {
