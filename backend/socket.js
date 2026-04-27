@@ -4,7 +4,10 @@ import { Message, Conversation } from "./modules/chat/chat.model.js";
 const initializeSocket = (server) => {
   const io = new Server(server, {
     cors: {
-      origin: process.env.FRONTEND_URL || "http://localhost:3000",
+      origin: function (origin, callback) {
+        // Allow all origins in development (reflects the origin back)
+        callback(null, true);
+      },
       methods: ["GET", "POST"],
       credentials: true,
     },

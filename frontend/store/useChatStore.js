@@ -6,37 +6,34 @@ import { useAuthStore } from "./useAuthStore";
 // Socket connects to the same server as the API, just without /api
 const SOCKET_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api").replace(/\/api$/, "");
 
-// Helper: process an incoming message (used by both receive_message and new_message_notification)
+// Helper: process an incoming message
 const handleIncomingMessage = (message, get, set) => {
-  try {
-    const { activeConversation, messages, conversations } = get();
-    console.log(`[Socket] Received message: ${message.text}. Active Conv: ${activeConversation?._id}, Msg Conv: ${message.conversationId}`);
+  set((state) => {
+    const { activeConversation, messages, conversations } = state;
+    let newMessages = messages;
 
     // If message belongs to the active conversation, add it to the message list
     if (activeConversation && String(activeConversation._id) === String(message.conversationId)) {
-      // Deduplicate: skip if we already have this exact DB message or a temp optimistic copy
       const alreadyExists = messages.some(
-        (m) => (m._id === message._id) || // same DB _id (already received via room)
+        (m) => (m._id === message._id) || 
           (String(m._id).startsWith("temp-") && m.text === message.text && String(m.sender) === String(message.sender))
       );
 
       if (alreadyExists) {
-        // Replace temp message with real DB message
         const filtered = messages.filter(
           (m) => !(String(m._id).startsWith("temp-") && m.text === message.text && String(m.sender) === String(message.sender))
         );
-        // Only add if not already present as a real message
         if (!filtered.some((m) => m._id === message._id)) {
-          set({ messages: [...filtered, message] });
-          console.log("[Socket] Replaced optimistic message with real one");
+          newMessages = [...filtered, message];
+        } else {
+          newMessages = filtered; // Just in case we filtered a temp message but the real one was already there
         }
       } else {
-        set({ messages: [...messages, message] });
-        console.log("[Socket] Appended new message to UI");
+        newMessages = [...messages, message];
       }
     }
 
-    // Update conversation sidebar: last message + sort to top
+    // Update conversation sidebar
     const updatedConversations = conversations.map((c) => {
       if (String(c._id) === String(message.conversationId)) {
         return { ...c, lastMessage: message, updatedAt: message.createdAt };
@@ -44,10 +41,12 @@ const handleIncomingMessage = (message, get, set) => {
       return c;
     });
     updatedConversations.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-    set({ conversations: updatedConversations });
-  } catch (error) {
-    console.error("[Socket] Error handling incoming message:", error);
-  }
+
+    return {
+      messages: newMessages,
+      conversations: updatedConversations
+    };
+  });
 };
 
 const useChatStore = create((set, get) => ({
