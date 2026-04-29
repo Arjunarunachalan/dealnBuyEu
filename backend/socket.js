@@ -7,7 +7,7 @@ const initializeSocket = (server) => {
       origin: function (origin, callback) {
         callback(null, true);
       },
-      methods: ["GET", "POST"],
+      methods: ["GET", "POST", "PATCH"],
       credentials: true,
     },
   });
@@ -42,6 +42,7 @@ const initializeSocket = (server) => {
           conversationId,
           sender: senderId,
           text,
+          messageType: "text",
           readBy: [senderId],
         });
 
@@ -68,6 +69,32 @@ const initializeSocket = (server) => {
         }
       } catch (error) {
         console.error("[WS] Error in send_message:", error);
+      }
+    });
+
+    // ── Handle offer response via socket (real-time update) ──
+    // Called AFTER the REST PATCH succeeds on the client side
+    socket.on("offer_respond", async (data) => {
+      try {
+        const { messageId, conversationId } = data;
+
+        // Fetch fresh from DB so we have the latest status
+        const updatedMessage = await Message.findById(messageId);
+        if (!updatedMessage) return;
+
+        const payload = updatedMessage.toObject();
+
+        // Broadcast updated offer to the whole conversation room
+        io.to(conversationId).emit("offer_updated", payload);
+        console.log(`[WS] emitted offer_updated to room ${conversationId}`);
+
+        // Also notify the offer sender directly if not in the room
+        const senderSocketId = connectedUsers.get(String(updatedMessage.sender));
+        if (senderSocketId) {
+          io.to(senderSocketId).emit("offer_updated", payload);
+        }
+      } catch (error) {
+        console.error("[WS] Error in offer_respond:", error);
       }
     });
 
