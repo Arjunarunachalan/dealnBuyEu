@@ -51,7 +51,7 @@ const useChatStore = create((set, get) => ({
       conversations.forEach((c) => sock.emit("join_conversation", c._id));
     });
 
-    // ── Incoming message via ROOM broadcast ──────────────────────────────
+    // ── Incoming text message via ROOM broadcast ──────────────────────────
     sock.on("receive_message", (msg) => {
       console.log("[WS] receive_message:", msg.text);
       _handleMsg(msg, set);
@@ -61,6 +61,17 @@ const useChatStore = create((set, get) => ({
     sock.on("new_message_notification", (msg) => {
       console.log("[WS] new_message_notification:", msg.text);
       _handleMsg(msg, set);
+    });
+
+    // ── Offer status updated (accept/reject) ─────────────────────────────
+    sock.on("offer_updated", (updatedMsg) => {
+      console.log("[WS] offer_updated:", updatedMsg._id, updatedMsg.offer?.status);
+      set((state) => {
+        const newMessages = state.messages.map((m) =>
+          String(m._id) === String(updatedMsg._id) ? updatedMsg : m
+        );
+        return { messages: newMessages };
+      });
     });
 
     sock.on("disconnect", (reason) => {
@@ -164,7 +175,7 @@ const useChatStore = create((set, get) => ({
     }
   },
 
-  // ── Send message ───────────────────────────────────────────────────────
+  // ── Send text message ───────────────────────────────────────────────────
   sendMessage: (text, receiverId) => {
     const { activeConversation } = get();
     const userId = useAuthStore.getState().user?._id;
@@ -181,6 +192,67 @@ const useChatStore = create((set, get) => ({
       text,
     });
   },
+
+  // ── Send a price offer (REST, then let socket broadcast handle UI) ─────
+  sendOffer: async (amount, note = "") => {
+    const { activeConversation } = get();
+    if (!activeConversation) return null;
+
+    try {
+      const res = await axiosInstance.post(
+        `/chat/${activeConversation._id}/offer`,
+        { amount, note }
+      );
+      const offerMsg = res.data;
+
+      // Optimistically append to messages
+      set((state) => ({ messages: [...state.messages, offerMsg] }));
+
+      // Let the socket room know too (for the other participant)
+      if (_socket) {
+        _socket.emit("receive_message", offerMsg); // piggyback on existing room event
+      }
+
+      return offerMsg;
+    } catch (error) {
+      console.error("Error sending offer:", error);
+      set({ error: error.response?.data?.message || "Failed to send offer" });
+      return null;
+    }
+  },
+
+  // ── Seller responds to an offer ────────────────────────────────────────
+  respondToOffer: async (messageId, action) => {
+    const { activeConversation } = get();
+    try {
+      const res = await axiosInstance.patch(
+        `/chat/offer/${messageId}/respond`,
+        { action }
+      );
+      const updatedMsg = res.data;
+
+      // Update the message in local state immediately
+      set((state) => ({
+        messages: state.messages.map((m) =>
+          String(m._id) === String(messageId) ? updatedMsg : m
+        ),
+      }));
+
+      // Trigger socket event so the other participant's UI also updates
+      if (_socket && activeConversation) {
+        _socket.emit("offer_respond", {
+          messageId,
+          conversationId: activeConversation._id,
+        });
+      }
+
+      return updatedMsg;
+    } catch (error) {
+      console.error("Error responding to offer:", error);
+      set({ error: error.response?.data?.message || "Failed to respond to offer" });
+      return null;
+    }
+  },
 }));
 
 // ── Pure helper — processes an incoming message ──────────────────────────────
@@ -190,14 +262,6 @@ function _handleMsg(message, set) {
   
   set((state) => {
     const { activeConversation, messages, conversations } = state;
-    
-    console.log("[WS] Current state:", {
-      hasActiveConv: !!activeConversation,
-      activeConvId: activeConversation?._id,
-      msgConvId: message.conversationId,
-      match: activeConversation ? String(activeConversation._id) === String(message.conversationId) : false,
-      currentMsgCount: messages.length,
-    });
     
     let newMessages = messages;
 
@@ -214,11 +278,8 @@ function _handleMsg(message, set) {
           String(m.sender) === String(message.sender)
       );
 
-      console.log("[WS] Dedup check:", { isDuplicate, isOptimistic });
-
       if (isDuplicate) {
         newMessages = messages;
-        console.log("[WS] SKIPPED: duplicate");
       } else if (isOptimistic) {
         newMessages = [
           ...messages.filter(
@@ -231,13 +292,9 @@ function _handleMsg(message, set) {
           ),
           message,
         ];
-        console.log("[WS] REPLACED optimistic message");
       } else {
         newMessages = [...messages, message];
-        console.log("[WS] APPENDED new message. New count:", newMessages.length);
       }
-    } else {
-      console.log("[WS] SKIPPED: conversation mismatch or no active conversation");
     }
 
     // Update conversation sidebar (last message + sort)

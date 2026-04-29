@@ -12,10 +12,26 @@ const messageSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    // 'text' for normal messages, 'offer' for price offers
+    messageType: {
+      type: String,
+      enum: ["text", "offer"],
+      default: "text",
+    },
     text: {
       type: String,
-      required: true,
       trim: true,
+      // Optional for offer messages (may carry a note)
+    },
+    // Only populated when messageType === 'offer'
+    offer: {
+      amount: { type: Number },
+      note: { type: String, trim: true },
+      status: {
+        type: String,
+        enum: ["pending", "accepted", "rejected"],
+        default: "pending",
+      },
     },
     readBy: [
       {
