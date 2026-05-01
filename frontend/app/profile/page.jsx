@@ -12,6 +12,120 @@ import {
 import Link from 'next/link';
 import api from '../../lib/axiosInstance';
 import ProfileLocationInput from '../../components/ui/ProfileLocationInput';
+import toast from 'react-hot-toast';
+
+const AddInterestSection = ({ user, login }) => {
+  const [categories, setCategories] = useState([]);
+  const [selectedIds, setSelectedIds] = useState(user?.interestedCategories || []);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (user && user.interestedCategories) {
+      setSelectedIds(user.interestedCategories);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const fetchCats = async () => {
+      try {
+        const { data } = await api.get('/categories');
+        setCategories(data.data || []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCats();
+  }, []);
+
+  const toggleCategory = (id) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await api.put('/users/profile', { interestedCategories: selectedIds });
+      if (res.data) {
+        const accessToken = localStorage.getItem('accessToken') || useAuthStore.getState().accessToken;
+        login(res.data, accessToken);
+        toast.success("Interests saved successfully!");
+      }
+    } catch (err) {
+      toast.error("Failed to save interests.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const renderCategoryCheckbox = (cat, depth, isAncestorSelected) => {
+    const isChecked = isAncestorSelected || selectedIds.includes(cat._id);
+    return (
+      <div key={cat._id} className={`flex items-center my-3 py-1 rounded px-2 ${isAncestorSelected ? 'opacity-70 bg-gray-50' : 'hover:bg-gray-100/50'}`} style={{ marginLeft: `${depth * 24}px` }}>
+        <input 
+          type="checkbox" 
+          id={`cat-${cat._id}`}
+          checked={isChecked} 
+          disabled={isAncestorSelected}
+          onChange={() => toggleCategory(cat._id)}
+          className={`w-4 h-4 text-[#046BD2] bg-white border-gray-300 rounded focus:ring-[#046BD2] ${isAncestorSelected ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+        />
+        <label htmlFor={`cat-${cat._id}`} className={`ml-3 text-[15px] font-semibold text-gray-800 select-none ${isAncestorSelected ? 'cursor-not-allowed text-gray-500' : 'cursor-pointer'}`}>
+          {cat.name}
+          {isAncestorSelected && <span className="ml-2 text-[10px] font-bold uppercase tracking-wider text-[#046BD2] bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded">Included</span>}
+        </label>
+      </div>
+    );
+  };
+
+  const renderCategoryTree = (cats, depth = 0, isAncestorSelected = false) => {
+    return cats.map(cat => {
+      const isSelected = selectedIds.includes(cat._id);
+      const isCurrentOrAncestorSelected = isAncestorSelected || isSelected;
+      return (
+        <div key={cat._id}>
+          {renderCategoryCheckbox(cat, depth, isAncestorSelected)}
+          {cat.children && cat.children.length > 0 && renderCategoryTree(cat.children, depth + 1, isCurrentOrAncestorSelected)}
+        </div>
+      );
+    });
+  };
+
+  return (
+    <div className="bg-white rounded-2xl shadow-[0_4px_24px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-10 relative overflow-hidden">
+      <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-400 to-teal-400"></div>
+      
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 border-b border-gray-100 pb-6 gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">My Interests</h2>
+          <p className="text-gray-500 mt-1.5 text-sm">Select categories you are interested in. We'll notify you when new ads are posted.</p>
+        </div>
+        <button 
+          onClick={handleSave} 
+          disabled={saving || loading}
+          className="flex items-center text-white bg-[#046BD2] hover:bg-[#035bb3] font-semibold px-5 py-2.5 rounded-xl transition-all duration-300 shadow-sm disabled:opacity-50 shrink-0"
+        >
+          {saving ? <Loader2 size={16} className="animate-spin mr-2.5" /> : <Save size={16} className="mr-2.5" />}
+          {saving ? "Saving..." : "Save Interests"}
+        </button>
+      </div>
+
+      <div className="bg-gray-50/50 p-6 rounded-xl border border-gray-100 min-h-[300px] max-h-[600px] overflow-y-auto custom-scrollbar">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center h-40"><Loader2 className="animate-spin text-[#046BD2] mb-3" size={32} /><p className="text-sm text-gray-500 font-medium">Loading categories...</p></div>
+        ) : categories.length === 0 ? (
+          <div className="text-center p-10"><p className="text-gray-500 font-medium">No categories found.</p></div>
+        ) : (
+          <div className="space-y-1">
+             {renderCategoryTree(categories)}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export default function ProfilePage() {
   const { user, isLoggedIn, isChecking, hydrate, logout, login } = useAuthStore();
@@ -61,10 +175,11 @@ export default function ProfilePage() {
          const accessToken = localStorage.getItem('accessToken') || useAuthStore.getState().accessToken;
          login(res.data, accessToken);
          setIsEditing(false);
+         toast.success("Profile updated successfully!");
       }
     } catch (err) {
       console.error("Failed to update profile", err);
-      alert("Failed to save changes. Please try again.");
+      toast.error("Failed to save changes. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -373,6 +488,9 @@ export default function ProfilePage() {
           </div>
         );
       
+      case 'addInterest':
+        return <AddInterestSection user={user} login={login} />;
+
       // Generic Empty State for Other Tabs
       default:
         const selectedTab = tabs.find(t => t.id === activeTab) || tabs[0];

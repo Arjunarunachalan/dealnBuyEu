@@ -74,6 +74,12 @@ const userSchema = mongoose.Schema(
         ref: "Post",
       },
     ],
+    interestedCategories: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Category",
+      },
+    ],
   },
   {
     timestamps: true,

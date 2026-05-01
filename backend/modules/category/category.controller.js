@@ -5,7 +5,10 @@ import {
   toggleCategoryStatus,
   updateCategoryAttributes,
   getCategoryFilters,
+  getPopularCategories,
+  incrementCategoryClick,
 } from "./category.service.js";
+import jwt from "jsonwebtoken";
 
 // ─────────────────────────────────────────────
 // POST /api/admin/categories
@@ -161,6 +164,57 @@ export const getCategoryFiltersHandler = async (req, res) => {
     return res.status(err.statusCode || 500).json({
       success: false,
       message: err.message || "Failed to fetch category filters.",
+    });
+  }
+};
+
+// ─────────────────────────────────────────────
+// GET /api/categories/popular (public)
+// ─────────────────────────────────────────────
+export const getPopularCategoriesHandler = async (req, res) => {
+  try {
+    const popularCategories = await getPopularCategories(req.country);
+
+    return res.status(200).json({
+      success: true,
+      data: popularCategories,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message || "Failed to fetch popular categories.",
+    });
+  }
+};
+
+// ─────────────────────────────────────────────
+// POST /api/categories/slug/:slug/click (public)
+// ─────────────────────────────────────────────
+export const incrementCategoryClickHandler = async (req, res) => {
+  try {
+    let viewerId = req.ip || req.connection?.remoteAddress || "unknown";
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      try {
+        const token = authHeader.split(" ")[1];
+        const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET || "access_secret");
+        if (decoded && decoded.id) {
+          viewerId = decoded.id;
+        }
+      } catch (err) {
+        // Ignore token error, fallback to IP
+      }
+    }
+
+    const { slug } = req.params;
+    await incrementCategoryClick(slug, req.country, viewerId);
+
+    // Always return 200, it's a background metric essentially
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    return res.status(err.statusCode || 500).json({
+      success: false,
+      message: err.message || "Failed to track category click.",
     });
   }
 };

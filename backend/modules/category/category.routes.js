@@ -7,11 +7,15 @@ import {
   toggleCategoryStatusHandler,
   updateCategoryAttributesHandler,
   getCategoryFiltersHandler,
+  getPopularCategoriesHandler,
+  incrementCategoryClickHandler,
 } from "./category.controller.js";
 
 // ─── Public routes (no auth required) ────────
 const categoryPublicRouter = express.Router();
 
+categoryPublicRouter.get("/popular", getPopularCategoriesHandler);
+categoryPublicRouter.post("/slug/:slug/click", incrementCategoryClickHandler);
 categoryPublicRouter.get("/", getCategoriesHandler);
 categoryPublicRouter.get("/:id/filters", getCategoryFiltersHandler);
 

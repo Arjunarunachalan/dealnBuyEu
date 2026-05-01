@@ -1,3 +1,4 @@
+import jwt from "jsonwebtoken";
 import { createPost, getPosts, getPostById, getMyPosts, updatePost, deletePost } from "./post.service.js";
 
 /**
@@ -62,7 +63,21 @@ export const getPostsHandler = async (req, res) => {
  */
 export const getPostByIdHandler = async (req, res) => {
   try {
-    const post = await getPostById(req.params.id, req.country);
+    let viewerId = req.ip || req.connection.remoteAddress || "unknown";
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      try {
+        const token = authHeader.split(" ")[1];
+        const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET || "access_secret");
+        if (decoded && decoded.id) {
+          viewerId = decoded.id;
+        }
+      } catch (err) {
+        // Ignore token errors, fallback to IP
+      }
+    }
+
+    const post = await getPostById(req.params.id, req.country, viewerId);
 
     return res.status(200).json({
       success: true,

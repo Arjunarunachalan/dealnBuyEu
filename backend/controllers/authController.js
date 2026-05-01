@@ -121,6 +121,7 @@ export const verifyOtp = async (req, res) => {
       pseudoName: decryptField(user.pseudoName),
       email: email,
       role: user.role,
+      interestedCategories: user.interestedCategories || [],
       accessToken,
       message: "Verification successful",
     });
@@ -284,6 +285,7 @@ export const resetPassword = async (req, res) => {
       pseudoName: decryptField(user.pseudoName),
       email: email,
       role: user.role,
+      interestedCategories: user.interestedCategories || [],
       accessToken,
       message: "Password reset successful",
     });
@@ -331,6 +333,7 @@ export const loginUser = async (req, res) => {
         role: user.role,
         country: user.country,
         gdprAccepted: user.gdprAccepted || false,
+        interestedCategories: user.interestedCategories || [],
         accessToken,
         message: "Login successful",
       });
@@ -381,6 +384,7 @@ export const googleAuthCallback = async (req, res) => {
       role: user.role,
       country: user.country,
       gdprAccepted: user.gdprAccepted || false,
+      interestedCategories: user.interestedCategories || [],
     };
 
     const userDataEncoded = encodeURIComponent(JSON.stringify(userData));
@@ -447,6 +451,7 @@ export const registerGoogleUser = async (req, res) => {
       role: newUser.role,
       country: newUser.country,
       gdprAccepted: newUser.gdprAccepted,
+      interestedCategories: newUser.interestedCategories || [],
       accessToken,
       message: "Google Secure Registry verified successfully"
     });

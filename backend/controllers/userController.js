@@ -21,6 +21,11 @@ export const updateUserProfile = async (req, res) => {
       // Additional fields
       if (req.body.phone !== undefined) user.phone = req.body.phone;
       if (req.body.location !== undefined) user.location = req.body.location;
+      
+      // Update interested categories if provided
+      if (req.body.interestedCategories !== undefined) {
+        user.interestedCategories = req.body.interestedCategories;
+      }
 
       const updatedUser = await user.save();
 
@@ -36,6 +41,7 @@ export const updateUserProfile = async (req, res) => {
         country: updatedUser.country,
         role: updatedUser.role,
         gdprAccepted: updatedUser.gdprAccepted,
+        interestedCategories: updatedUser.interestedCategories,
       });
     } else {
       res.status(404).json({ message: "User not found" });
