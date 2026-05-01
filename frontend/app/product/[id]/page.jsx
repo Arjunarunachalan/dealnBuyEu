@@ -10,6 +10,7 @@ import { useWishlistStore } from '../../../store/useWishlistStore';
 import { useAuthStore } from '../../../store/useAuthStore';
 import useChatStore from '../../../store/useChatStore';
 import { useRouter } from 'next/navigation';
+import ReportModal from '../../../components/ui/ReportModal';
 
 export default function ProductPage({ params }) {
   const resolvedParams = use(params);
@@ -29,6 +30,7 @@ export default function ProductPage({ params }) {
   const { isLoggedIn, user: currentUser } = useAuthStore();
   const { startConversation } = useChatStore();
   const [isStartingChat, setIsStartingChat] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const wishlisted = postId ? isWishlisted(postId) : false;
 
   // Derived: is this post owned by the current logged-in user?
@@ -91,9 +93,11 @@ export default function ProductPage({ params }) {
   };
 
   const handleReport = () => {
-    if(confirm("Are you sure you want to report this product?")) {
-       alert("Product reported successfully. Our team will review it shortly.");
+    if (!isLoggedIn) {
+      router.push('/registration_login');
+      return;
     }
+    setShowReportModal(true);
   };
 
   const handleWishlistToggle = async () => {
@@ -176,6 +180,7 @@ export default function ProductPage({ params }) {
   const prevImage = () => setActiveImage((prev) => (prev === 0 ? displayImages.length - 1 : prev - 1));
 
   return (
+    <>
     <div className="min-h-screen bg-[#F3F4F6] flex flex-col">
       <Navbar />
       
@@ -430,5 +435,14 @@ export default function ProductPage({ params }) {
       
       <Footer />
     </div>
-  );
+
+    {/* Report Modal */}
+    {showReportModal && (
+      <ReportModal
+        postId={postId}
+        postTitle={product?.title}
+        onClose={() => setShowReportModal(false)}
+      />
+    )}
+  </>);
 }
