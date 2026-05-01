@@ -24,9 +24,8 @@ export default function CategoryGrid() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const { data } = await api.get('/categories');
-        // Only show up to 7 root categories + View All on the homepage
-        setCategories(data?.data?.slice(0, 7) ?? []);
+        const { data } = await api.get('/categories/popular');
+        setCategories(data?.data || []);
       } catch (err) {
         console.error('Failed to fetch categories:', err);
       } finally {

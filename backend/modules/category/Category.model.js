@@ -78,6 +78,14 @@ const categorySchema = new mongoose.Schema(
       type: String,
       required: [true, "Country code is required"],
     },
+    clickCount: {
+      type: Number,
+      default: 0,
+    },
+    clickedBy: {
+      type: [String], // Store User IDs or IPs to prevent duplicate counting
+      default: [],
+    },
   },
   {
     timestamps: true,

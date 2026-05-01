@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, use } from 'react';
 import Link from 'next/link';
-import { MapPin, MessageCircle, Share2, Flag, Navigation, ChevronLeft, ChevronRight, User, Link as LinkIcon, Loader2, Heart } from 'lucide-react';
+import { MapPin, MessageCircle, Share2, Flag, Navigation, ChevronLeft, ChevronRight, User, Link as LinkIcon, Loader2, Heart, Eye } from 'lucide-react';
 import Navbar from '../../../components/layout/Navbar';
 import Footer from '../../../components/layout/Footer';
 import api from '../../../lib/axiosInstance';
@@ -327,6 +327,7 @@ export default function ProductPage({ params }) {
               <div className="flex flex-wrap items-center text-sm text-gray-600 gap-y-2 gap-x-6 mb-8 py-4 border-y border-gray-100">
                 <span className="flex items-center"><MapPin size={18} className="mr-2 text-gray-400" /> {displayLocation}</span>
                 <span className="flex items-center"><span className="text-gray-400 mr-2">•</span> Posted {postedDateString}</span>
+                <span className="flex items-center"><span className="text-gray-400 mr-2">•</span> <Eye size={18} className="mr-1.5 text-gray-400" /> {product.viewsCount || 0} views</span>
               </div>
 
               {/* Description */}

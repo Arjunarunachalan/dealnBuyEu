@@ -59,6 +59,9 @@ function CategoryPageContent({ categorySlug, categoryName }) {
       }
     };
     fetchCategoryInfo();
+
+    // Fire-and-forget: Track the click!
+    api.post(`/categories/slug/${categorySlug}/click`).catch(err => console.error("Click tracking failed", err));
   }, [categorySlug]);
 
   // Determine the target active category logic based on URL params

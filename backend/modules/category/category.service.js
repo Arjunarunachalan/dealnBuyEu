@@ -438,3 +438,47 @@ export const getCategoryFilters = async (categoryId, country) => {
 
   return { attributes: filters };
 };
+
+/**
+ * getPopularCategories
+ * Fetches the top 7 categories based on clickCount
+ */
+export const getPopularCategories = async (country) => {
+  if (!country) throw new Error("Country is required to fetch popular categories.");
+  
+  const popularCategories = await Category.find({ isActive: true, isDeleted: false, country })
+    .sort({ clickCount: 1, createdAt: -1 })
+    .limit(7)
+    .lean();
+
+  return popularCategories;
+};
+
+/**
+ * incrementCategoryClick
+ * Atomically increments clickCount for a given category slug if the user/IP hasn't clicked recently.
+ */
+export const incrementCategoryClick = async (slug, country, viewerId) => {
+  if (!country) throw new Error("Country is required.");
+
+  // Fast read
+  const category = await Category.findOne({ slug, country }, "_id clickedBy").lean();
+  if (!category) {
+    const err = new Error("Category not found");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  // Check if already clicked by this user/IP
+  if (!category.clickedBy?.includes(viewerId)) {
+    await Category.updateOne(
+      { _id: category._id },
+      {
+        $addToSet: { clickedBy: viewerId },
+        $inc: { clickCount: 1 }
+      }
+    );
+  }
+
+  return { success: true };
+};
