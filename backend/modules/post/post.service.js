@@ -3,6 +3,8 @@ import Category from "../category/Category.model.js";
 import { getCategoryPath } from "../category/category.service.js";
 import { decryptField } from "../../utils/fieldEncryption.js";
 import cloudinary from "../../utils/cloudinary.js";
+import User from "../../models/User.js";
+import { sendMail } from "../../utils/mailer.js";
 
 // ─────────────────────────────────────────────
 // HIGHER ORDER HELPERS
@@ -289,7 +291,68 @@ export const createPost = async (postData, userId) => {
     country,
   });
 
+  // 6. Notifications: Send email to users interested in this category
+  notifyInterestedUsers(post, category).catch(err => console.error("Notification error:", err));
+
   return post;
+};
+
+/**
+ * notifyInterestedUsers
+ * Background task to notify users whose interestedCategories match any of the post's categoryPath
+ */
+const notifyInterestedUsers = async (post, category) => {
+  try {
+    const interestedUsers = await User.find({
+      _id: { $ne: post.userId },
+      isActive: true,
+      country: post.country,
+      interestedCategories: { $in: post.categoryPath }
+    }).lean();
+
+    if (interestedUsers.length === 0) return;
+
+    const productLink = `${process.env.FRONTEND_URL || "https://dealnbuy.com"}/product/${post._id}`;
+    const priceFormatted = new Intl.NumberFormat('en-EU', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(post.price);
+    const locationStr = post.location?.city ? post.location.city : "Local Pickup";
+
+    const emailPromises = interestedUsers.map(user => {
+      const plainEmail = decryptField(user.email) || user.email;
+      const userName = decryptField(user.name) || "User";
+
+      const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+          <h2 style="color: #046BD2; text-align: center;">New Item in Your Interests!</h2>
+          <p>Hi ${userName},</p>
+          <p>A new ad matching your interests was just posted in <strong>${category.name}</strong>.</p>
+          
+          <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #333;">${post.title}</h3>
+            <p style="font-size: 18px; font-weight: bold; color: #046BD2; margin: 10px 0;">${priceFormatted}</p>
+            <p style="color: #555; margin: 5px 0;">📍 Location: ${locationStr}</p>
+          </div>
+          
+          <div style="text-align: center; margin-top: 25px;">
+            <a href="${productLink}" style="background-color: #046BD2; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">View Product</a>
+          </div>
+          
+          <p style="font-size: 12px; color: #aaa; text-align: center; margin-top: 30px;">
+            You received this email because you added this category to your interests. You can update your interests in your profile settings.
+          </p>
+        </div>
+      `;
+
+      return sendMail({
+        to: plainEmail,
+        subject: `New Ad matching your interests: ${post.title}`,
+        html
+      }).catch(err => console.error(`Failed to email ${plainEmail}:`, err.message));
+    });
+
+    await Promise.allSettled(emailPromises);
+  } catch (error) {
+    console.error("Error notifying interested users:", error.message);
+  }
 };
 
 
@@ -377,7 +440,7 @@ export const getPosts = async (queryParams) => {
   };
 };
 
-export const getPostById = async (id, country) => {
+export const getPostById = async (id, country, viewerId) => {
   if (!country) {
     throw new Error("Strict architecture error: country context is required.");
   }
@@ -391,6 +454,19 @@ export const getPostById = async (id, country) => {
     const err = new Error("Post not found or unavailable in this region.");
     err.statusCode = 404;
     throw err;
+  }
+
+  if (viewerId && (!post.viewedBy || !post.viewedBy.includes(viewerId))) {
+    // Fire and forget update to increment views
+    Post.updateOne(
+      { _id: id },
+      { $addToSet: { viewedBy: viewerId }, $inc: { viewsCount: 1 } }
+    ).catch(err => console.error("Failed to update view count:", err));
+    
+    // Update local object to reflect the change immediately
+    post.viewsCount = (post.viewsCount || 0) + 1;
+    if (!post.viewedBy) post.viewedBy = [];
+    post.viewedBy.push(viewerId);
   }
 
   // Populate dynamic product counts safely (just as a helper if needed later)

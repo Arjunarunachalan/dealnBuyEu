@@ -45,6 +45,14 @@ const postSchema = new mongoose.Schema(
         coordinates: { type: [Number] }, // [longitude, latitude]
       },
     },
+    viewsCount: {
+      type: Number,
+      default: 0,
+    },
+    viewedBy: {
+      type: [String],
+      default: [],
+    },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
