@@ -5,7 +5,7 @@ import Navbar from '../../components/layout/Navbar';
 import Footer from '../../components/layout/Footer';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useWishlistStore } from '../../store/useWishlistStore';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   User, Heart, List, Star, Megaphone, Shield, Trash2, LogOut, Edit3, Camera, MapPin, Phone, Mail, CheckCircle2, ChevronRight, Save, X, ArrowRight, Tag, Loader2
 } from 'lucide-react';
@@ -13,6 +13,7 @@ import Link from 'next/link';
 import api from '../../lib/axiosInstance';
 import ProfileLocationInput from '../../components/ui/ProfileLocationInput';
 import toast from 'react-hot-toast';
+import AddAdvertisementWizard from '../../components/profile/AddAdvertisementWizard';
 
 const AddInterestSection = ({ user, login }) => {
   const [categories, setCategories] = useState([]);
@@ -131,7 +132,23 @@ export default function ProfilePage() {
   const { user, isLoggedIn, isChecking, hydrate, logout, login } = useAuthStore();
   const { wishlistItems, isLoading: wishlistLoading, fetchWishlistItems, toggle: toggleWishlist, wishlistIds } = useWishlistStore();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState('profile');
+  const searchParams = useSearchParams();
+  const tabFromQuery = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(tabFromQuery || 'profile');
+
+  useEffect(() => {
+    if (tabFromQuery && tabFromQuery !== activeTab) {
+      setActiveTab(tabFromQuery);
+    }
+  }, [tabFromQuery]);
+
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    if (tabId === 'deleteAccount') return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', tabId);
+    router.push(`?${params.toString()}`, { scroll: false });
+  };
 
   // Edit State
   const [isEditing, setIsEditing] = useState(false);
@@ -491,6 +508,9 @@ export default function ProfilePage() {
       case 'addInterest':
         return <AddInterestSection user={user} login={login} />;
 
+      case 'ownAd':
+        return <AddAdvertisementWizard />;
+
       // Generic Empty State for Other Tabs
       default:
         const selectedTab = tabs.find(t => t.id === activeTab) || tabs[0];
@@ -553,7 +573,7 @@ export default function ProfilePage() {
                  {tabs.map((t) => (
                     <button 
                       key={t.id} 
-                      onClick={() => setActiveTab(t.id)}
+                      onClick={() => handleTabChange(t.id)}
                       className={`w-full flex items-center px-4 py-3.5 rounded-xl transition-all duration-200 text-[15px] font-semibold group
                         ${activeTab === t.id 
                           ? 'bg-blue-50/80 text-[#046BD2]' 
@@ -585,7 +605,7 @@ export default function ProfilePage() {
                   className={`w-full flex items-center px-4 py-3.5 rounded-xl transition-colors text-[15px] font-semibold group
                     ${activeTab === 'deleteAccount' ? 'bg-red-50 text-red-600' : 'text-red-500 hover:bg-red-50 hover:text-red-600'}
                   `}
-                  onClick={() => setActiveTab('deleteAccount')}
+                  onClick={() => handleTabChange('deleteAccount')}
                 >
                    <Trash2 size={18} className="mr-3.5 opacity-80" /> Delete Account
                 </button>
