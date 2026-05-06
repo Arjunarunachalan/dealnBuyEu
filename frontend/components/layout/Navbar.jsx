@@ -160,7 +160,8 @@ export default function Navbar() {
                     {/* Links */}
                     <div className="flex flex-col">
                       <Link href="/myads" className="px-4 py-2.5 text-[14px] font-medium text-gray-800 hover:bg-gray-50 border-b border-gray-200">My Ads</Link>
-                      <Link href="/postadd" className="px-4 py-2.5 text-[14px] font-medium text-gray-800 hover:bg-gray-50 border-b border-gray-200">Add Advertisement</Link>
+                      <Link href="/postadd" className="px-4 py-2.5 text-[14px] font-medium text-gray-800 hover:bg-gray-50 border-b border-gray-200">Post Free Ad</Link>
+                      <Link href="/profile?tab=ownAd" className="px-4 py-2.5 text-[14px] font-medium text-gray-800 hover:bg-gray-50 border-b border-gray-200">Create Advertisement</Link>
                       <Link href="/subscription" className="px-4 py-2.5 text-[14px] font-medium text-gray-800 hover:bg-gray-50 border-b border-gray-200">Subscription Plans</Link>
                       <Link href="/wishlist" className="flex justify-between items-center px-4 py-2.5 text-[14px] font-medium text-gray-800 hover:bg-gray-50 border-b border-gray-200">
                         <span>My Wishlist</span>
