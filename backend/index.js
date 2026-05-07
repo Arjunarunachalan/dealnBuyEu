@@ -11,6 +11,7 @@ import { categoryPublicRouter, categoryAdminRouter } from "./modules/category/ca
 import postRoutes from "./modules/post/post.routes.js";
 import searchRoutes from "./modules/post/search.routes.js";
 import wishlistRoutes from "./modules/wishlist/wishlist.routes.js";
+import subscriptionRoutes from "./modules/subscription/subscription.routes.js";
 import passport from "passport";
 import "./config/passport.js";
 import { countryGateway } from "./middleware/countryGateway.js";
@@ -59,6 +60,7 @@ app.use("/api/posts", postRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/subscriptions", subscriptionRoutes);
 
 app.get("/", (req, res) => {
   res.send("API is running...");
