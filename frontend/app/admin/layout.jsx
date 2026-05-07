@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore } from "../../store/useAuthStore";
 import Link from "next/link";
-import { LayoutDashboard, Users, Tags, FileText } from "lucide-react";
+import { LayoutDashboard, Users, Tags, FileText, CreditCard } from "lucide-react";
+
 
 export default function AdminLayout({ children }) {
   const router = useRouter();
@@ -43,7 +44,9 @@ export default function AdminLayout({ children }) {
     { name: "Users", href: "/admin/users", icon: Users },
     { name: "Categories", href: "/admin/categories", icon: Tags },
     { name: "Legal Pages", href: "/admin/legal-pages", icon: FileText },
+    { name: "Subscriptions", href: "/admin/subscriptions", icon: CreditCard },
   ];
+
 
   return (
     <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-gray-50">
