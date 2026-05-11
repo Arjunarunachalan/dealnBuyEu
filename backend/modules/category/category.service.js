@@ -446,8 +446,8 @@ export const getCategoryFilters = async (categoryId, country) => {
 export const getPopularCategories = async (country) => {
   if (!country) throw new Error("Country is required to fetch popular categories.");
   
-  const popularCategories = await Category.find({ isActive: true, isDeleted: false, country })
-    .sort({ clickCount: 1, createdAt: -1 })
+  const popularCategories = await Category.find({ isActive: true, isDeleted: false, country, parentId: null })
+    .sort({ clickCount: -1, createdAt: -1 })
     .limit(7)
     .lean();
 

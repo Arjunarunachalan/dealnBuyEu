@@ -17,6 +17,7 @@ import { countryGateway } from "./middleware/countryGateway.js";
 import legalPageRoutes from "./routes/legalPageRoutes.js";
 import chatRoutes from "./modules/chat/chat.routes.js";
 import reportRoutes from "./modules/report/report.routes.js";
+import adRoutes from "./modules/ad/ad.routes.js";
 import http from "http";
 import initializeSocket from "./socket.js";
 
@@ -61,6 +62,7 @@ app.use("/api/search", searchRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/ads", adRoutes);
 
 app.get("/", (req, res) => {
   res.send("API is running...");

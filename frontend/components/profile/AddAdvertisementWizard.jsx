@@ -6,10 +6,13 @@ import {
   Search, Layout, ShoppingBag, CreditCard, Play, Calculator, HelpCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import api from '../../lib/axiosInstance';
+import LocationInput from '../postadd/LocationInput';
 
 export default function AddAdvertisementWizard() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [categories, setCategories] = useState([]);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -18,31 +21,29 @@ export default function AddAdvertisementWizard() {
     url: '',
     images: [],
     city: '',
+    lat: null,
+    lng: null,
     radius: 10,
-    placement: 'search', // search, homepage, product
+    placement: 'homepage', // homepage, category
+    targetCategory: '',
     cpmModel: true,
-    budget: 5,
-    days: 7,
+    targetImpressions: 1000,
   });
 
-  const placementMultipliers = {
-    search: 1.0,
-    homepage: 1.5,
-    product: 1.2,
-  };
+  useEffect(() => {
+    api.get('/categories').then(({ data }) => {
+      setCategories(data?.data || []);
+    }).catch(err => console.error("Failed to fetch categories", err));
+  }, []);
 
   const placementInfo = {
-    search: { label: 'Search Results', desc: 'Show in top of search', vis: 'High' },
-    homepage: { label: 'Homepage', desc: 'Featured on main page', vis: 'Medium' },
-    product: { label: 'Product Detail Page', desc: 'Under related items', vis: 'Medium' }
+    homepage: { label: 'Homepage', desc: 'Featured on main page', vis: 'High' },
+    category: { label: 'Category Page', desc: 'Inside feed listings', vis: 'Medium' }
   };
 
   // Calculations
-  const baseCPM = 3;
-  const multiplier = placementMultipliers[formData.placement] || 1;
-  const finalCPM = baseCPM * multiplier;
-  const totalCost = formData.budget * formData.days;
-  const estimatedImpressions = Math.floor((totalCost / finalCPM) * 1000);
+  const impressionCost = formData.placement === 'homepage' ? 0.02 : 0.01;
+  const totalCost = formData.targetImpressions * impressionCost;
 
   const handleNext = () => {
     if (currentStep === 1) {
@@ -52,8 +53,12 @@ export default function AddAdvertisementWizard() {
       }
     }
     if (currentStep === 2) {
-      if (!formData.city) {
-        toast.error("Please select a city.");
+      if (!formData.city || formData.lat == null || formData.lng == null) {
+        toast.error("Please select a specific city from the dropdown to capture GPS coordinates.");
+        return;
+      }
+      if (formData.placement === 'category' && !formData.targetCategory) {
+        toast.error("Please select a target category.");
         return;
       }
     }
@@ -84,18 +89,46 @@ export default function AddAdvertisementWizard() {
     setFormData({ ...formData, images: newImages });
   };
 
-  const submitCampaign = () => {
-    if (formData.budget < 5) {
-      toast.error("Minimum daily budget is €5");
+  const submitCampaign = async () => {
+    if (formData.targetImpressions < 100) {
+      toast.error("Minimum 100 impressions required");
       return;
     }
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
+    
+    try {
+      const payload = {
+        title: formData.title,
+        description: formData.description,
+        url: formData.url,
+        images: formData.images, // Note: For testing, blob URLs will be auto-replaced by backend
+        city: formData.city,
+        lat: formData.lat,
+        lng: formData.lng,
+        radius: formData.radius,
+        placement: formData.placement,
+        targetCategory: formData.targetCategory,
+        targetImpressions: formData.targetImpressions
+      };
+
+      const res = await api.post('/ads/create', payload);
+      
+      if (res.data.success) {
+        toast.success("Campaign launched successfully! (Payment Bypassed for Testing)");
+        // Reset form to defaults
+        setFormData({
+          title: '', description: '', url: '', images: [], city: '', lat: null, lng: null, radius: 10,
+          placement: 'homepage', targetCategory: '', cpmModel: true, targetImpressions: 1000
+        });
+        setCurrentStep(1);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(err?.response?.data?.message || "Failed to create campaign.");
+    } finally {
       setIsLoading(false);
-      toast.success("Campaign launched successfully!");
-      // Reset or redirect here
-    }, 1500);
+    }
   };
 
   return (
@@ -150,6 +183,7 @@ export default function AddAdvertisementWizard() {
                   </label>
                   <input 
                     type="text" 
+                    suppressHydrationWarning
                     value={formData.title}
                     onChange={(e) => setFormData({...formData, title: e.target.value})}
                     placeholder="Enter ad title"
@@ -179,6 +213,7 @@ export default function AddAdvertisementWizard() {
                   </label>
                   <input 
                     type="url" 
+                    suppressHydrationWarning
                     value={formData.url}
                     onChange={(e) => setFormData({...formData, url: e.target.value})}
                     placeholder="https://example.com"
@@ -244,16 +279,19 @@ export default function AddAdvertisementWizard() {
                   <div className="space-y-5">
                     <div>
                       <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">City Selection <span className="text-red-500">*</span></label>
-                      <div className="relative">
-                        <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                        <input 
-                          type="text" 
-                          value={formData.city}
-                          onChange={(e) => setFormData({...formData, city: e.target.value})}
-                          placeholder="e.g. Paris, Lyon, Marseille"
-                          className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:border-[#046BD2] focus:ring-1 focus:ring-[#046BD2] outline-none shadow-sm"
-                        />
-                      </div>
+                      <LocationInput 
+                        id="ad-city"
+                        value={formData.city}
+                        onChange={(val) => {
+                          if (typeof val === 'object') {
+                            setFormData({...formData, city: val.address, lat: val.lat, lng: val.lng});
+                          } else {
+                            setFormData({...formData, city: val, lat: null, lng: null});
+                          }
+                        }}
+                        placeholder="e.g. Paris, Lyon, Marseille"
+                        required={true}
+                      />
                     </div>
                     
                     <div>
@@ -287,10 +325,10 @@ export default function AddAdvertisementWizard() {
                 {/* Section B: Ad Placement */}
                 <div>
                   <h4 className="text-[14px] font-bold text-gray-800 uppercase tracking-wide mb-4">Ad Placement</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {Object.entries(placementInfo).map(([key, info]) => {
                       const isSelected = formData.placement === key;
-                      const Icon = key === 'search' ? Search : key === 'homepage' ? Layout : ShoppingBag;
+                      const Icon = key === 'homepage' ? Layout : ShoppingBag;
                       return (
                         <div 
                           key={key}
@@ -301,7 +339,7 @@ export default function AddAdvertisementWizard() {
                               : 'border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm'
                           }`}
                         >
-                          {key === 'search' && (
+                          {key === 'homepage' && (
                             <div className="absolute -top-2.5 -right-2.5 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm uppercase tracking-wider">
                               Recommended
                             </div>
@@ -319,6 +357,22 @@ export default function AddAdvertisementWizard() {
                       )
                     })}
                   </div>
+
+                  {formData.placement === 'category' && (
+                    <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Select Target Category <span className="text-red-500">*</span></label>
+                      <select 
+                        value={formData.targetCategory}
+                        onChange={(e) => setFormData({...formData, targetCategory: e.target.value})}
+                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:border-[#046BD2] focus:ring-1 focus:ring-[#046BD2] outline-none shadow-sm font-semibold text-gray-700"
+                      >
+                        <option value="">Select a category...</option>
+                        {categories.map(cat => (
+                          <option key={cat._id} value={cat._id}>{cat.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
 
                 {/* Section C: Estimated Impressions */}
@@ -349,7 +403,7 @@ export default function AddAdvertisementWizard() {
           {currentStep === 3 && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-500">
               <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-                <CreditCard className="mr-2 text-[#046BD2]" size={20} /> Budget & Payment
+                <CreditCard className="mr-2 text-[#046BD2]" size={20} /> Purchase Impressions
               </h3>
               
               <div className="space-y-6">
@@ -357,57 +411,36 @@ export default function AddAdvertisementWizard() {
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="text-[14px] font-bold text-gray-800 uppercase tracking-wide">Pricing Model</h4>
                     <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-1 rounded shadow-sm uppercase tracking-wider">
-                      CPM Mode
+                      Fixed CPM Mode
                     </span>
                   </div>
                   
-                  <div className="grid grid-cols-3 gap-4 text-center divide-x divide-gray-200 bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
-                    <div>
-                      <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Base CPM</p>
-                      <p className="font-extrabold text-gray-900">€{baseCPM}</p>
+                  <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-gray-700">Cost per 10 Impressions:</span>
+                      <span className="font-extrabold text-[#046BD2] text-lg">€{(impressionCost * 10).toFixed(2)}</span>
                     </div>
-                    <div>
-                      <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Multiplier</p>
-                      <p className="font-extrabold text-[#046BD2]">{multiplier}x</p>
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Final CPM</p>
-                      <p className="font-extrabold text-green-600">€{finalCPM.toFixed(2)}</p>
-                    </div>
+                    <p className="text-xs text-gray-500 mt-2">Based on {placementInfo[formData.placement].label} placement</p>
                   </div>
-                  <p className="text-xs text-gray-500 mt-3 text-center">Cost Per Mille (1,000 impressions) based on {placementInfo[formData.placement].label}</p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-[13px] font-bold text-gray-700 uppercase tracking-wide mb-1">
-                      Daily Budget <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">€</span>
-                      <input 
-                        type="number" 
-                        min="5"
-                        value={formData.budget}
-                        onChange={(e) => setFormData({...formData, budget: Math.max(0, parseInt(e.target.value) || 0)})}
-                        className="w-full pl-8 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:border-[#046BD2] focus:ring-1 focus:ring-[#046BD2] outline-none shadow-sm font-semibold text-lg"
-                      />
-                    </div>
-                    <p className="text-xs text-gray-400 mt-1.5">Minimum €5/day</p>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-[13px] font-bold text-gray-700 uppercase tracking-wide mb-1">
-                      Duration (Days) <span className="text-red-500">*</span>
-                    </label>
+                <div>
+                  <label className="block text-[13px] font-bold text-gray-700 uppercase tracking-wide mb-1">
+                    Target Impressions <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold"><Eye size={18} /></span>
                     <input 
                       type="number" 
-                      min="1"
-                      value={formData.days}
-                      onChange={(e) => setFormData({...formData, days: Math.max(1, parseInt(e.target.value) || 1)})}
-                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:border-[#046BD2] focus:ring-1 focus:ring-[#046BD2] outline-none shadow-sm font-semibold text-lg"
+                      suppressHydrationWarning
+                      min="100"
+                      step="10"
+                      value={formData.targetImpressions}
+                      onChange={(e) => setFormData({...formData, targetImpressions: Math.max(0, parseInt(e.target.value) || 0)})}
+                      className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:border-[#046BD2] focus:ring-1 focus:ring-[#046BD2] outline-none shadow-sm font-semibold text-lg"
                     />
                   </div>
+                  <p className="text-xs text-gray-400 mt-1.5">Minimum 100 impressions</p>
                 </div>
 
                 {/* Real-time Calculation */}
@@ -419,8 +452,8 @@ export default function AddAdvertisementWizard() {
                     <p className="font-extrabold text-3xl">€{totalCost.toFixed(2)}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-blue-100 text-xs font-medium uppercase tracking-wider mb-1">Est. Impressions</p>
-                    <p className="font-bold text-xl">{estimatedImpressions.toLocaleString()}</p>
+                    <p className="text-blue-100 text-xs font-medium uppercase tracking-wider mb-1">Total Impressions</p>
+                    <p className="font-bold text-xl">{formData.targetImpressions.toLocaleString()}</p>
                   </div>
                 </div>
 
@@ -477,6 +510,7 @@ export default function AddAdvertisementWizard() {
       {/* Navigation Buttons */}
       <div className="mt-8 pt-6 border-t border-gray-100 flex items-center justify-between mt-auto">
         <button
+          suppressHydrationWarning
           onClick={handlePrev}
           disabled={currentStep === 1}
           className={`font-semibold px-6 py-2.5 rounded-xl transition-all ${
@@ -490,6 +524,7 @@ export default function AddAdvertisementWizard() {
         
         {currentStep < 3 ? (
           <button
+            suppressHydrationWarning
             onClick={handleNext}
             className="flex items-center text-white bg-[#046BD2] hover:bg-[#035bb3] font-bold px-8 py-3 rounded-xl transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
           >
@@ -497,6 +532,7 @@ export default function AddAdvertisementWizard() {
           </button>
         ) : (
           <button
+            suppressHydrationWarning
             onClick={submitCampaign}
             disabled={isLoading}
             className="flex items-center text-white bg-green-500 hover:bg-green-600 font-bold px-8 py-3 rounded-xl transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed"

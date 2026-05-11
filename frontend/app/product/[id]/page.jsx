@@ -11,6 +11,7 @@ import { useAuthStore } from '../../../store/useAuthStore';
 import useChatStore from '../../../store/useChatStore';
 import { useRouter } from 'next/navigation';
 import ReportModal from '../../../components/ui/ReportModal';
+import CategoryDropdown from '../../../components/ui/CategoryDropdown';
 
 export default function ProductPage({ params }) {
   const resolvedParams = use(params);
@@ -238,6 +239,9 @@ export default function ProductPage({ params }) {
 
             {/* Product Info Block */}
             <div className="bg-white rounded-lg shadow-sm p-6 sm:p-8 border border-gray-100 relative">
+              <div className="mb-4 inline-block">
+                <CategoryDropdown currentCategoryName={categoryName} />
+              </div>
               <div className="flex flex-col sm:flex-row justify-between items-start mb-6 gap-6">
                 <div className="flex-1">
                   <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3 leading-tight">{displayTitle}</h1>

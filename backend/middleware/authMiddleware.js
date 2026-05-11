@@ -82,3 +82,32 @@ export const superAdminOnly = (req, res, next) => {
     message: "Access denied. Super admin privileges required.",
   });
 };
+
+/**
+ * optionalAuth
+ * Attempts to verify the token if present. If valid, attaches req.user.
+ * Does not block if token is missing or invalid.
+ */
+export const optionalAuth = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return next();
+    }
+    const token = authHeader.split(" ")[1];
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_ACCESS_SECRET || "access_secret"
+    );
+    const user = await User.findById(decoded.id)
+      .select("-password -refreshToken -otp -otpExpires")
+      .lean();
+    
+    if (user && user.isActive) {
+      req.user = user;
+    }
+    next();
+  } catch (err) {
+    next(); // Just proceed as guest
+  }
+};

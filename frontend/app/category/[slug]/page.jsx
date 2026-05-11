@@ -8,6 +8,9 @@ import Navbar from '../../../components/layout/Navbar';
 import Footer from '../../../components/layout/Footer';
 import ProductCard from '../../../components/products/ProductCard';
 import api from '../../../lib/axiosInstance';
+import CategoryDropdown from '../../../components/ui/CategoryDropdown';
+import AdTracker from '../../../components/ads/AdTracker';
+import { useLocationStore } from '../../../store/useLocationStore';
 
 function CategoryPageContent({ categorySlug, categoryName }) {
   const router = useRouter();
@@ -23,6 +26,11 @@ function CategoryPageContent({ categorySlug, categoryName }) {
   
   const [loading, setLoading] = useState(true);
   const [showFiltersMobile, setShowFiltersMobile] = useState(false);
+
+  // Get user location for geospatial ad targeting
+  const userLat = useLocationStore(state => state.lat);
+  const userLng = useLocationStore(state => state.lng);
+  const locationIsSet = useLocationStore(state => state.isSet);
 
   // Filters State
   const [minPrice, setMinPrice] = useState('');
@@ -123,7 +131,39 @@ function CategoryPageContent({ categorySlug, categoryName }) {
         }
 
         const { data } = await api.get(`/posts${queryParams}`);
-        setPosts(data?.data?.posts || []);
+        let fetchedPosts = data?.data?.posts || [];
+
+        // Fetch Ads and Interleave (only when user location is confirmed)
+        let ads = [];
+        try {
+          if (locationIsSet && userLat != null && userLng != null) {
+            const adPayload = { placement: 'category', count: 3, userLat, userLng };
+            const adResponse = await api.post('/ads/fetch', adPayload);
+            ads = adResponse.data?.data || [];
+          }
+          if (ads.length > 0) {
+            const interleaved = [];
+            let adIndex = 0;
+            fetchedPosts.forEach((post, i) => {
+              interleaved.push(post);
+              // Insert 1 ad every 4 listings
+              if ((i + 1) % 4 === 0 && adIndex < ads.length) {
+                interleaved.push({ ...ads[adIndex], isAd: true });
+                adIndex++;
+              }
+            });
+            // If there are still ads and no posts, or short posts
+            while (adIndex < ads.length && interleaved.length < 15) {
+               interleaved.push({ ...ads[adIndex], isAd: true });
+               adIndex++;
+            }
+            fetchedPosts = interleaved;
+          }
+        } catch (adErr) {
+          console.error("Failed to inject ads", adErr);
+        }
+
+        setPosts(fetchedPosts);
       } catch (err) {
         console.error("Failed to fetch posts", err);
       } finally {
@@ -295,7 +335,7 @@ function CategoryPageContent({ categorySlug, categoryName }) {
             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
               <div>
                 <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 flex items-center">
-                  {targetCategory?.name || categoryName} 
+                  <CategoryDropdown currentCategoryName={targetCategory?.name || categoryName} />
                   <span className="ml-3 px-3 py-1 bg-blue-50 text-[#046BD2] text-sm rounded-full font-bold">
                     {posts.length} Listed
                   </span>
@@ -330,15 +370,31 @@ function CategoryPageContent({ categorySlug, categoryName }) {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 xl:gap-6">
                 {posts.map(post => (
                   <div key={post._id} className="h-full">
-                    <ProductCard 
-                       id={post._id}
-                       title={post.title}
-                       price={`€ ${post.price.toLocaleString()}`}
-                       location={post.location?.city || 'Local Pickup'}
-                       badge={post.isFeatured ? "Featured" : ""}
-                       rating={5} // Mock rating
-                       imageUrl={post.images?.[0] || 'https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&q=80&w=400'}
-                    />
+                    {post.isAd ? (
+                      <AdTracker ad={post} placement="category">
+                        <div onClick={() => window.open(post.url, '_blank')} className="h-full">
+                          <ProductCard 
+                             id={post._id}
+                             title={post.title}
+                             price="Sponsored"
+                             location={post.city || 'Local'}
+                             badge="Sponsored"
+                             rating={5}
+                             imageUrl={post.images?.[0] || 'https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&q=80&w=400'}
+                          />
+                        </div>
+                      </AdTracker>
+                    ) : (
+                      <ProductCard 
+                         id={post._id}
+                         title={post.title}
+                         price={`€ ${post.price.toLocaleString()}`}
+                         location={post.location?.city || 'Local Pickup'}
+                         badge={post.isFeatured ? "Featured" : ""}
+                         rating={5} // Mock rating
+                         imageUrl={post.images?.[0] || 'https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&q=80&w=400'}
+                      />
+                    )}
                   </div>
                 ))}
               </div>

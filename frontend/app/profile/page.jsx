@@ -7,13 +7,14 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useWishlistStore } from '../../store/useWishlistStore';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
-  User, Heart, List, Star, Megaphone, Shield, Trash2, LogOut, Edit3, Camera, MapPin, Phone, Mail, CheckCircle2, ChevronRight, Save, X, ArrowRight, Tag, Loader2
+  User, Heart, List, Star, Megaphone, Shield, Trash2, LogOut, Edit3, Camera, MapPin, Phone, Mail, CheckCircle2, ChevronRight, Save, X, ArrowRight, Tag, Loader2, BarChart3
 } from 'lucide-react';
 import Link from 'next/link';
 import api from '../../lib/axiosInstance';
 import ProfileLocationInput from '../../components/ui/ProfileLocationInput';
 import toast from 'react-hot-toast';
 import AddAdvertisementWizard from '../../components/profile/AddAdvertisementWizard';
+import MyCampaigns from '../../components/profile/MyCampaigns';
 
 const AddInterestSection = ({ user, login }) => {
   const [categories, setCategories] = useState([]);
@@ -218,7 +219,8 @@ export default function ProfilePage() {
     { id: 'profile', label: 'User Information', icon: <User size={18} /> },
     { id: 'wishlist', label: 'My Wishlist', icon: <Heart size={18} />, count: wishlistIds.size || null },
     { id: 'myads', label: 'My Ads', icon: <List size={18} /> },
-    { id: 'ownAd', label: 'Own Advertisement', icon: <Megaphone size={18} /> },
+    { id: 'ownAd', label: 'Create Advertisement', icon: <Megaphone size={18} /> },
+    { id: 'campaigns', label: 'Campaign Dashboard', icon: <BarChart3 size={18} /> },
     { id: 'addInterest', label: 'Add Interest', icon: <Star size={18} /> },
     { id: 'privacy', label: 'Privacy Settings', icon: <Shield size={18} /> },
   ];
@@ -510,6 +512,9 @@ export default function ProfilePage() {
 
       case 'ownAd':
         return <AddAdvertisementWizard />;
+
+      case 'campaigns':
+        return <MyCampaigns />;
 
       // Generic Empty State for Other Tabs
       default:
