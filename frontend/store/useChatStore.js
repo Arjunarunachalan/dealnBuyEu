@@ -79,6 +79,11 @@ const useChatStore = create((set, get) => ({
     });
 
     _socket = sock;
+
+    // ── Listen for server-side errors ───────────────────────────────────
+    sock.on("message_error", (err) => {
+      console.error("[WS] server error:", err);
+    });
   },
 
   // ── Disconnect socket (called on logout, NOT on component unmount) ─────
@@ -178,10 +183,12 @@ const useChatStore = create((set, get) => ({
   // ── Send text message ───────────────────────────────────────────────────
   sendMessage: (text, receiverId) => {
     const { activeConversation } = get();
-    const userId = useAuthStore.getState().user?._id;
+    const user = useAuthStore.getState().user;
+    const userId = user?._id;
 
     if (!_socket || !activeConversation || !userId) {
-      console.warn("[WS] sendMessage blocked — socket/conv/user missing");
+      console.warn("[WS] sendMessage blocked — socket/conv/user missing",
+        { socket: !!_socket, conv: !!activeConversation, user: !!userId });
       return;
     }
 
@@ -258,7 +265,9 @@ const useChatStore = create((set, get) => ({
 // ── Pure helper — processes an incoming message ──────────────────────────────
 // Uses Zustand's functional `set` so the state snapshot is always fresh.
 function _handleMsg(message, set) {
-  console.log("[WS] _handleMsg called with:", message.text, "convId:", message.conversationId);
+  // Safely extract sender ID whether it's a string or populated object
+  const msgSenderId = String(message.sender?._id || message.sender);
+  console.log("[WS] _handleMsg called with:", message.text, "convId:", message.conversationId, "sender:", msgSenderId);
   
   set((state) => {
     const { activeConversation, messages, conversations } = state;
@@ -270,12 +279,16 @@ function _handleMsg(message, set) {
       activeConversation &&
       String(activeConversation._id) === String(message.conversationId)
     ) {
-      const isDuplicate = messages.some((m) => m._id === message._id);
+      const isDuplicate = messages.some((m) => String(m._id) === String(message._id));
       const isOptimistic = messages.some(
-        (m) =>
-          String(m._id).startsWith("temp-") &&
-          m.text === message.text &&
-          String(m.sender) === String(message.sender)
+        (m) => {
+          const mSenderId = String(m.sender?._id || m.sender);
+          return (
+            String(m._id).startsWith("temp-") &&
+            m.text === message.text &&
+            mSenderId === msgSenderId
+          );
+        }
       );
 
       if (isDuplicate) {
@@ -283,12 +296,14 @@ function _handleMsg(message, set) {
       } else if (isOptimistic) {
         newMessages = [
           ...messages.filter(
-            (m) =>
-              !(
+            (m) => {
+              const mSenderId = String(m.sender?._id || m.sender);
+              return !(
                 String(m._id).startsWith("temp-") &&
                 m.text === message.text &&
-                String(m.sender) === String(message.sender)
-              )
+                mSenderId === msgSenderId
+              );
+            }
           ),
           message,
         ];
@@ -312,3 +327,4 @@ function _handleMsg(message, set) {
 }
 
 export default useChatStore;
+

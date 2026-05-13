@@ -1,6 +1,6 @@
 import express from "express";
 import { protect, adminOnly, superAdminOnly } from "../../middleware/authMiddleware.js";
-import { getStats, getUsers, changeUserRole, getReports, updateReportStatus } from "./admin.controller.js";
+import { getStats, getUsers, changeUserRole, getReports, updateReportStatus, getPremiumUsers, getPosts, getAds, getContactMessages, sendNotification } from "./admin.controller.js";
 
 const router = express.Router();
 
@@ -18,5 +18,20 @@ router.get("/reports", protect, adminOnly, getReports);
 
 // PATCH /api/admin/reports/:id
 router.patch("/reports/:id", protect, adminOnly, updateReportStatus);
+
+// GET /api/admin/premium-users
+router.get("/premium-users", protect, adminOnly, getPremiumUsers);
+
+// GET /api/admin/posts
+router.get("/posts", protect, adminOnly, getPosts);
+
+// GET /api/admin/ads
+router.get("/ads", protect, adminOnly, getAds);
+
+// GET /api/admin/contact-messages
+router.get("/contact-messages", protect, adminOnly, getContactMessages);
+
+// POST /api/admin/notifications/send
+router.post("/notifications/send", protect, adminOnly, sendNotification);
 
 export default router;

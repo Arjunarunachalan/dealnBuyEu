@@ -63,8 +63,20 @@ export const getMessages = async (req, res) => {
       return res.status(403).json({ message: "Unauthorized" });
     }
 
-    const messages = await Message.find({ conversationId: id }).sort({ createdAt: 1 });
-    res.status(200).json(messages);
+    const messages = await Message.find({ conversationId: id })
+      .populate("sender", "name surname pseudoName")
+      .sort({ createdAt: 1 });
+
+    // Decrypt sender fields
+    const decryptedMessages = messages.map((msg) => {
+      const obj = msg.toObject();
+      if (obj.sender && obj.sender._id) {
+        obj.sender = decryptParticipant(obj.sender);
+      }
+      return obj;
+    });
+
+    res.status(200).json(decryptedMessages);
   } catch (error) {
     console.error("Error in getMessages:", error.message);
     res.status(500).json({ message: "Server Error" });

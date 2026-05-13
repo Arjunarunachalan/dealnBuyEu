@@ -551,12 +551,46 @@ export const updatePost = async (id, userId, country, updateData) => {
     throw err;
   }
 
-  // Allowlist of fields the owner can update
-  const ALLOWED = ["title", "description", "price", "isActive"];
-  for (const key of ALLOWED) {
+  // Allowlist of simple fields the owner can update
+  const SIMPLE_FIELDS = ["title", "description", "price", "isActive"];
+  for (const key of SIMPLE_FIELDS) {
     if (updateData[key] !== undefined) {
       post[key] = updateData[key];
     }
+  }
+
+  // Handle location update
+  if (updateData.location !== undefined) {
+    post.location = updateData.location;
+  }
+
+  // Handle attributes update (partial merge)
+  if (updateData.attributes !== undefined) {
+    post.attributes = { ...(post.attributes || {}), ...updateData.attributes };
+    post.markModified("attributes");
+  }
+
+  // Handle images update — supports mixed array of existing URLs and new base64 data
+  if (updateData.images !== undefined) {
+    const finalImages = [];
+    for (const img of updateData.images) {
+      if (img.startsWith("http://") || img.startsWith("https://")) {
+        // Existing Cloudinary URL — keep as is
+        finalImages.push(img);
+      } else if (img.startsWith("data:")) {
+        // New base64 image — upload to Cloudinary
+        try {
+          const result = await cloudinary.uploader.upload(img, {
+            folder: "dealnBuyEu/posts",
+          });
+          finalImages.push(result.secure_url);
+        } catch (err) {
+          console.error("Cloudinary upload error during update:", err);
+          throw new Error("Failed to upload image.");
+        }
+      }
+    }
+    post.images = finalImages;
   }
 
   await post.save();

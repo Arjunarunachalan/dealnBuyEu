@@ -2,9 +2,11 @@
 
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { Search, MapPin, Bell, Menu, User, PlusCircle, MessageCircle } from 'lucide-react';
+import { Search, MapPin, Bell, Menu, User, PlusCircle, MessageCircle, X } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
+import api from '../../lib/axiosInstance';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useWishlistStore } from '../../store/useWishlistStore';
 import { useLocationStore } from '../../store/useLocationStore';
 import SearchBar from './SearchBar';
 import Breadcrumbs from './Breadcrumbs';
@@ -29,7 +31,40 @@ export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, isLoggedIn, logout, hydrate: hydrateAuth } = useAuthStore();
   const { name: locationName, isSet, hydrate: hydrateLocation } = useLocationStore();
+  const { wishlistIds, fetchWishlistIds } = useWishlistStore();
   const searchBarRef = useRef(null);
+  const wishlistCount = wishlistIds.size;
+  
+  const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    if (isLoggedIn && user) {
+      fetchNotifications();
+      fetchWishlistIds();
+    }
+  }, [isLoggedIn, user]);
+
+  const fetchNotifications = async () => {
+    try {
+      const { data } = await api.get("/notifications");
+      if (data.success) {
+        setNotifications(data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+    }
+  };
+
+  const markAsRead = async (id) => {
+    try {
+      await api.patch(`/notifications/${id}/read`);
+      fetchNotifications();
+    } catch (error) {
+      console.error("Error marking read:", error);
+    }
+  };
+
+  const unreadCount = notifications.filter(n => !n.readBy.includes(user?._id)).length;
 
   useEffect(() => {
     hydrateAuth();
@@ -113,11 +148,14 @@ export default function Navbar() {
             <Link href="/messages" suppressHydrationWarning className="text-gray-600 hover:text-[#046BD2] transition-colors relative">
               <MessageCircle size={24} />
             </Link>
+            
             <Link href="/notifications" className="text-gray-600 hover:text-[#046BD2] transition-colors relative">
               <Bell size={24} />
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
-                2
-              </span>
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                  {unreadCount}
+                </span>
+              )}
             </Link>
 
             {isLoggedIn ? (
@@ -165,7 +203,9 @@ export default function Navbar() {
                       <Link href="/subscription" className="px-4 py-2.5 text-[14px] font-medium text-gray-800 hover:bg-gray-50 border-b border-gray-200">Subscription Plans</Link>
                       <Link href="/wishlist" className="flex justify-between items-center px-4 py-2.5 text-[14px] font-medium text-gray-800 hover:bg-gray-50 border-b border-gray-200">
                         <span>My Wishlist</span>
-                        <span className="bg-[#046BD2] text-white text-[11px] font-bold w-5 h-5 rounded-full flex items-center justify-center">3</span>
+                        {wishlistCount > 0 && (
+                          <span className="bg-[#046BD2] text-white text-[11px] font-bold w-5 h-5 rounded-full flex items-center justify-center">{wishlistCount}</span>
+                        )}
                       </Link>
                       <Link href="/profile" className="px-4 py-2.5 text-[14px] font-medium text-gray-800 hover:bg-gray-50 border-b border-gray-200">My Account</Link>
                       <Link href="/refer" className="px-4 py-2.5 text-[14px] font-medium text-gray-800 hover:bg-gray-50 border-b border-gray-200">Refer a Friend</Link>
@@ -260,10 +300,12 @@ export default function Navbar() {
                 <MessageCircle size={22} className="mr-3 text-[#046BD2]" />
                 <span className="flex-1 font-medium text-[15px]">Chats</span>
               </Link>
-              <Link href="/notifications" className="flex items-center text-gray-700 p-2 sm:p-3 hover:bg-gray-50 rounded-md transition-colors">
+              <Link href="/notifications" className="flex items-center w-full text-gray-700 p-2 sm:p-3 hover:bg-gray-50 rounded-md transition-colors text-left">
                 <Bell size={22} className="mr-3 text-[#046BD2]" />
                 <span className="flex-1 font-medium text-[15px]">Notifications</span>
-                <span className="bg-red-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-full">2</span>
+                {unreadCount > 0 && (
+                  <span className="bg-red-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-full">{unreadCount}</span>
+                )}
               </Link>
 
               {isLoggedIn ? (

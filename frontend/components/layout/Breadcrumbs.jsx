@@ -26,7 +26,10 @@ export default function Breadcrumbs() {
       'notifications': 'Notifications',
       'categories': 'All Categories',
       'category': 'Category',
-      'product': 'Product'
+      'product': 'Product',
+      'about': 'About',
+      'help-center': 'Help Center',
+      'messages': 'Messages',
     };
 
     if (specialCases[segment.toLowerCase()]) {

@@ -1,6 +1,10 @@
 import User from "../../models/User.js";
 import Post from "../post/Post.model.js";
 import Report from "../report/report.model.js";
+import UserSubscription from "../subscription/UserSubscription.model.js";
+import Ad from "../ad/ad.model.js";
+import ContactMessage from "../contact/ContactMessage.model.js";
+import Notification from "../notification/Notification.model.js";
 import { decryptField } from "../../utils/fieldEncryption.js";
 import { SUPPORTED_COUNTRIES } from "../../config/countryConfig.js";
 
@@ -190,6 +194,189 @@ export const changeUserRole = async (req, res) => {
     return res.status(200).json({ success: true, data: { _id: user._id, role: user.role } });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message || "Failed to change user role." });
+  }
+};
+// ─────────────────────────────────────────────
+// GET /api/admin/premium-users
+// ─────────────────────────────────────────────
+export const getPremiumUsers = async (req, res) => {
+  try {
+    const country = req.country;
+    const isSuperAdmin = req.user?.role === "super_admin";
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const baseQuery = isSuperAdmin ? { status: "active" } : { status: "active" };
+
+    const [subs, total] = await Promise.all([
+      UserSubscription.find(baseQuery)
+        .populate("user", "name pseudoName email role country")
+        .populate("plan", "name price durationDays")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      UserSubscription.countDocuments(baseQuery),
+    ]);
+
+    // Filter by country post-population if not super admin
+    let filteredSubs = subs;
+    if (!isSuperAdmin) {
+      filteredSubs = subs.filter(s => s.user && s.user.country === SUPPORTED_COUNTRIES[country]?.name);
+    }
+
+    const formatted = filteredSubs.map(s => ({
+      _id: s._id,
+      planName: s.plan ? s.plan.name : "Unknown",
+      startDate: s.startDate,
+      endDate: s.endDate,
+      status: s.status,
+      user: s.user ? {
+        _id: s.user._id,
+        name: safeDecrypt(s.user.name),
+        pseudoName: safeDecrypt(s.user.pseudoName),
+        email: safeDecrypt(s.user.email),
+        country: s.user.country
+      } : null
+    }));
+
+    return res.status(200).json({ success: true, data: { premiumUsers: formatted, total, page } });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message || "Failed to fetch premium users." });
+  }
+};
+
+// ─────────────────────────────────────────────
+// GET /api/admin/posts
+// ─────────────────────────────────────────────
+export const getPosts = async (req, res) => {
+  try {
+    const country = req.country;
+    const isSuperAdmin = req.user?.role === "super_admin";
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const query = isSuperAdmin ? {} : { country };
+
+    const [posts, total] = await Promise.all([
+      Post.find(query)
+        .populate("owner", "name pseudoName email")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Post.countDocuments(query),
+    ]);
+
+    const formatted = posts.map(p => ({
+      ...p,
+      owner: p.owner ? {
+        _id: p.owner._id,
+        name: safeDecrypt(p.owner.name),
+        pseudoName: safeDecrypt(p.owner.pseudoName),
+        email: safeDecrypt(p.owner.email),
+      } : null
+    }));
+
+    return res.status(200).json({ success: true, data: { posts: formatted, total, page } });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: "Failed to fetch posts." });
+  }
+};
+
+// ─────────────────────────────────────────────
+// GET /api/admin/ads
+// ─────────────────────────────────────────────
+export const getAds = async (req, res) => {
+  try {
+    const country = req.country;
+    const isSuperAdmin = req.user?.role === "super_admin";
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const query = isSuperAdmin ? {} : { country };
+
+    const [ads, total] = await Promise.all([
+      Ad.find(query)
+        .populate("advertiser", "name email")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Ad.countDocuments(query),
+    ]);
+
+    const formatted = ads.map(a => ({
+      ...a,
+      advertiser: a.advertiser ? {
+        _id: a.advertiser._id,
+        name: safeDecrypt(a.advertiser.name),
+        email: safeDecrypt(a.advertiser.email),
+      } : null
+    }));
+
+    return res.status(200).json({ success: true, data: { ads: formatted, total, page } });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: "Failed to fetch ads." });
+  }
+};
+
+// ─────────────────────────────────────────────
+// GET /api/admin/contact-messages
+// ─────────────────────────────────────────────
+export const getContactMessages = async (req, res) => {
+  try {
+    const country = req.country;
+    const isSuperAdmin = req.user?.role === "super_admin";
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const query = isSuperAdmin ? {} : { country };
+
+    const [messages, total] = await Promise.all([
+      ContactMessage.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      ContactMessage.countDocuments(query),
+    ]);
+
+    return res.status(200).json({ success: true, data: { messages, total, page } });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: "Failed to fetch contact messages." });
+  }
+};
+
+// ─────────────────────────────────────────────
+// POST /api/admin/notifications/send
+// ─────────────────────────────────────────────
+export const sendNotification = async (req, res) => {
+  try {
+    const country = req.country;
+    const { title, message } = req.body;
+
+    if (!title || !message) {
+      return res.status(400).json({ success: false, message: "Title and message are required" });
+    }
+
+    const newNotification = new Notification({
+      title,
+      message,
+      type: "admin",
+      targetAudience: "all",
+      country,
+    });
+
+    await newNotification.save();
+
+    return res.status(201).json({ success: true, message: "Notification broadcasted successfully", data: newNotification });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: "Failed to send notification." });
   }
 };
 

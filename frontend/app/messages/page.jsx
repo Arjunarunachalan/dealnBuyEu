@@ -213,7 +213,8 @@ export default function MessagesPage() {
     const trimmedText = messageText.trim();
     const optimisticMsg = {
       _id: `temp-${Date.now()}`, conversationId: activeConversation._id,
-      sender: user._id, text: trimmedText, messageType: "text",
+      sender: { _id: user._id, pseudoName: user.pseudoName, name: user.name },
+      text: trimmedText, messageType: "text",
       createdAt: new Date().toISOString(),
     };
     useChatStore.setState((s) => ({ messages: [...s.messages, optimisticMsg] }));
@@ -228,7 +229,8 @@ export default function MessagesPage() {
     const receiverId = String(receiver._id || receiver);
     const optimisticMsg = {
       _id: `temp-${Date.now()}`, conversationId: activeConversation._id,
-      sender: user._id, text, messageType: "text",
+      sender: { _id: user._id, pseudoName: user.pseudoName, name: user.name },
+      text, messageType: "text",
       createdAt: new Date().toISOString(),
     };
     useChatStore.setState((s) => ({ messages: [...s.messages, optimisticMsg] }));
@@ -411,6 +413,7 @@ export default function MessagesPage() {
                         messages.map((msg, idx) => {
                           const senderId = msg.sender?._id || msg.sender;
                           const isMine = senderId?.toString() === user?._id?.toString();
+                          const senderName = msg.sender?.pseudoName || msg.sender?.name || "";
 
                           if (msg.messageType === "offer") {
                             return (
@@ -429,6 +432,9 @@ export default function MessagesPage() {
                           return (
                             <div key={msg._id || idx} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
                               <div className="max-w-[70%] flex flex-col gap-1">
+                                {!isMine && senderName && (
+                                  <span className="text-[11px] font-semibold text-gray-500 px-1">{senderName}</span>
+                                )}
                                 <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
                                   isMine
                                     ? "bg-[#046BD2] text-white rounded-br-sm shadow-sm"

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { dummyDynamicFieldsOptions } from '../../lib/dummyCategories';
 import Input from '../ui/Input';
 import Button from '../ui/Button';
@@ -8,7 +8,7 @@ import { ImagePlus, MapPin, Tag } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import LocationInput from './LocationInput';
 
-export default function ProductDetailsForm({ categories, subcategoryId, onBack, onSubmit, isSubmitting }) {
+export default function ProductDetailsForm({ categories, subcategoryId, onBack, onSubmit, isSubmitting, isEditMode, initialData }) {
   const { user } = useAuthStore();
   
   // Recursively find the selected leaf category to get its dynamic attributes
@@ -26,15 +26,45 @@ export default function ProductDetailsForm({ categories, subcategoryId, onBack, 
     if (categories?.length) findCat(categories);
     return result?.attributes || [];
   })();
+
+  // Build initial form data — pre-fill from initialData if editing
+  const buildInitialFormData = () => {
+    const base = {
+      title: '',
+      description: '',
+      price: '',
+      location: '',
+      ...dynamicFields.reduce((acc, field) => ({ ...acc, [field.key]: '' }), {}),
+    };
+
+    if (isEditMode && initialData) {
+      base.title = initialData.title || '';
+      base.description = initialData.description || '';
+      base.price = initialData.price != null ? String(initialData.price) : '';
+      base.location = initialData.location?.city || '';
+
+      // Pre-fill dynamic attributes
+      if (initialData.attributes) {
+        for (const field of dynamicFields) {
+          if (initialData.attributes[field.key] !== undefined) {
+            base[field.key] = initialData.attributes[field.key];
+          }
+        }
+      }
+    }
+
+    return base;
+  };
   
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    price: '',
-    location: '',
-    ...dynamicFields.reduce((acc, field) => ({ ...acc, [field.key]: '' }), {}) // Note: field.key used instead of field.id to match actual attribute payload
+  const [formData, setFormData] = useState(buildInitialFormData);
+
+  // Pre-fill images from initialData
+  const [images, setImages] = useState(() => {
+    if (isEditMode && initialData?.images?.length > 0) {
+      return initialData.images.filter(i => i && !i.startsWith('blob:'));
+    }
+    return [];
   });
-  const [images, setImages] = useState([]);
 
   const handleChange = (e) => {
     // using name for radio/checkbox, id for others generally
@@ -90,6 +120,10 @@ export default function ProductDetailsForm({ categories, subcategoryId, onBack, 
     }
   };
 
+  const handleRemoveImage = (index) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleFormSubmit = (e) => {
     e.preventDefault();
     onSubmit({ ...formData, images });
@@ -98,13 +132,17 @@ export default function ProductDetailsForm({ categories, subcategoryId, onBack, 
   return (
     <div className="w-full max-w-4xl mx-auto pb-10">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-[24px] font-bold text-[#333333]">Post Details</h2>
-        <button 
-          onClick={onBack}
-          className="text-sm font-medium text-gray-500 hover:text-[#046BD2] transition-colors"
-        >
-          Change Subcategory
-        </button>
+        <h2 className="text-[24px] font-bold text-[#333333]">
+          {isEditMode ? 'Edit Details' : 'Post Details'}
+        </h2>
+        {onBack && (
+          <button 
+            onClick={onBack}
+            className="text-sm font-medium text-gray-500 hover:text-[#046BD2] transition-colors"
+          >
+            Change Subcategory
+          </button>
+        )}
       </div>
 
       <form onSubmit={handleFormSubmit} className="space-y-8">
@@ -181,7 +219,7 @@ export default function ProductDetailsForm({ categories, subcategoryId, onBack, 
                   {field.type === 'radio' && (
                     <div className="flex flex-wrap gap-3">
                       {field.options.map(opt => {
-                        const isSelected = formData[field.key] === opt;
+                        const isSelected = formData[field.key] === opt || formData[field.key] === opt.toLowerCase();
                         return (
                           <label 
                              key={opt} 
@@ -197,7 +235,7 @@ export default function ProductDetailsForm({ categories, subcategoryId, onBack, 
                               value={opt} 
                               checked={isSelected}
                               onChange={handleChange}
-                              className="sr-only" // screen reader only to keep accessibility while hiding the ugly default dot
+                              className="sr-only"
                             />
                             <span>{opt}</span>
                             {isSelected && (
@@ -278,7 +316,7 @@ export default function ProductDetailsForm({ categories, subcategoryId, onBack, 
                 <img src={src} alt={`Upload ${index}`} className="w-full h-full object-cover" />
                 <button 
                   type="button"
-                  onClick={() => setImages(images.filter((_, i) => i !== index))}
+                  onClick={() => handleRemoveImage(index)}
                   className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -304,9 +342,18 @@ export default function ProductDetailsForm({ categories, subcategoryId, onBack, 
           </div>
         </div>
 
-        <div className="pt-4 flex justify-end">
+        <div className="pt-4 flex justify-end gap-3">
+          {isEditMode && (
+            <button
+              type="button"
+              onClick={() => window.history.back()}
+              className="px-8 py-3 rounded-lg border border-gray-300 text-gray-600 font-semibold hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+          )}
           <Button type="submit" className="w-full md:w-auto px-10" isLoading={isSubmitting}>
-            Post Now
+            {isEditMode ? 'Update Ad' : 'Post Now'}
           </Button>
         </div>
       </form>

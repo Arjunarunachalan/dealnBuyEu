@@ -1,5 +1,18 @@
 import { Server } from "socket.io";
 import { Message, Conversation } from "./modules/chat/chat.model.js";
+import User from "./models/User.js";
+import { decryptField } from "./utils/fieldEncryption.js";
+
+// Helper: decrypt user fields for socket payloads
+const decryptSender = (senderObj) => {
+  if (!senderObj || !senderObj._id) return senderObj;
+  return {
+    _id: senderObj._id,
+    name: decryptField(senderObj.name),
+    surname: decryptField(senderObj.surname),
+    pseudoName: decryptField(senderObj.pseudoName),
+  };
+};
 
 const initializeSocket = (server) => {
   const io = new Server(server, {
@@ -51,14 +64,20 @@ const initializeSocket = (server) => {
           lastMessage: newMessage._id,
         });
 
-        // 3. Build a plain object to emit (avoid Mongoose doc quirks)
-        const payload = newMessage.toObject();
+        // 3. Populate sender info for display
+        const senderUser = await User.findById(senderId)
+          .select("name surname pseudoName")
+          .lean();
 
-        // 4. Broadcast to the conversation room (every socket in the room)
+        // 4. Build payload with decrypted sender info
+        const payload = newMessage.toObject();
+        payload.sender = decryptSender(senderUser);
+
+        // 5. Broadcast to the conversation room (every socket in the room)
         io.to(conversationId).emit("receive_message", payload);
         console.log(`[WS] emitted receive_message to room ${conversationId}`);
 
-        // 5. Also send a direct notification to the receiver's socket
+        // 6. Also send a direct notification to the receiver's socket
         //    (catches the case where they haven't joined the room yet)
         const receiverSocketId = connectedUsers.get(receiverId);
         if (receiverSocketId) {
@@ -69,6 +88,7 @@ const initializeSocket = (server) => {
         }
       } catch (error) {
         console.error("[WS] Error in send_message:", error);
+        socket.emit("message_error", { error: "Failed to send message" });
       }
     });
 
@@ -114,3 +134,4 @@ const initializeSocket = (server) => {
 };
 
 export default initializeSocket;
+

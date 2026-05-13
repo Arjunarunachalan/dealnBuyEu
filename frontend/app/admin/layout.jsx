@@ -4,12 +4,13 @@ import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore } from "../../store/useAuthStore";
 import Link from "next/link";
-import { LayoutDashboard, Users, Tags, FileText, Flag } from "lucide-react";
+import { LayoutDashboard, Users, Tags, FileText, CreditCard, Flag, Package, Megaphone, Crown, Bell, Mail, LogOut } from "lucide-react";
+
 
 export default function AdminLayout({ children }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, isChecking, hydrate } = useAuthStore();
+  const { user, isChecking, hydrate, logout } = useAuthStore();
   const [isAuthorized, setIsAuthorized] = useState(false);
 
   // Crucial fix: Hydrate the auth store on first load so isChecking becomes false
@@ -39,12 +40,19 @@ export default function AdminLayout({ children }) {
   }
 
   const navLinks = [
-    { name: "Dashboard",   href: "/admin/dashboard",   icon: LayoutDashboard },
-    { name: "Users",       href: "/admin/users",       icon: Users },
-    { name: "Reports",     href: "/admin/reports",     icon: Flag },
-    { name: "Categories",  href: "/admin/categories",  icon: Tags },
+    { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
+    { name: "Users", href: "/admin/users", icon: Users },
+    { name: "Premium Users", href: "/admin/premium-users", icon: Crown },
+    { name: "Products/Posts", href: "/admin/products", icon: Package },
+    { name: "Paid Ads", href: "/admin/ads", icon: Megaphone },
+    { name: "Categories", href: "/admin/categories", icon: Tags },
+    { name: "Reports", href: "/admin/reports", icon: Flag },
     { name: "Legal Pages", href: "/admin/legal-pages", icon: FileText },
+    { name: "Subscriptions", href: "/admin/subscriptions", icon: CreditCard },
+    { name: "Notifications", href: "/admin/notifications", icon: Bell },
+    { name: "Contact Us", href: "/admin/contact", icon: Mail },
   ];
+
 
   return (
     <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-gray-50">
@@ -62,11 +70,10 @@ export default function AdminLayout({ children }) {
               <Link
                 key={link.name}
                 href={link.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200 ${
-                  isActive
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200 ${isActive
                     ? "bg-blue-50 text-blue-600 font-medium"
                     : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                }`}
+                  }`}
               >
                 <Icon size={20} className={isActive ? "text-blue-600" : "text-gray-400"} />
                 {link.name}
@@ -74,6 +81,20 @@ export default function AdminLayout({ children }) {
             );
           })}
         </nav>
+        
+        {/* Logout Button */}
+        <div className="p-4 border-t">
+          <button
+            onClick={() => {
+              logout();
+              router.push("/registration_login");
+            }}
+            className="flex w-full items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors duration-200 font-medium"
+          >
+            <LogOut size={20} />
+            Logout
+          </button>
+        </div>
       </aside>
 
       {/* Main Content Area */}

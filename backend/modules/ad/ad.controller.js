@@ -1,5 +1,9 @@
 import * as adService from './ad.service.js';
 import Ad from './ad.model.js';
+import User from '../../models/User.js';
+import { sendMail } from '../../utils/mailer.js';
+import { getAdLiveEmailHtml } from '../../templates/adLiveEmail.js';
+import { decryptField } from '../../utils/fieldEncryption.js';
 
 export const getAds = async (req, res) => {
   try {
@@ -90,6 +94,31 @@ export const createAd = async (req, res) => {
     });
 
     await newAd.save();
+
+    // Send "Ad is Live" email to the advertiser (non-blocking)
+    try {
+      const advertiser = await User.findById(req.user._id).lean();
+      if (advertiser) {
+        const advertiserEmail = decryptField(advertiser.email);
+        const advertiserName = decryptField(advertiser.name) || "Advertiser";
+        sendMail({
+          to: advertiserEmail,
+          subject: `🚀 Your Ad "${title}" is Now Live – DealNBuy EU`,
+          html: getAdLiveEmailHtml({
+            name: advertiserName,
+            adTitle: title,
+            city: city || "Your Area",
+            radius: parseInt(radius) || 10,
+            placement: placement || "homepage",
+            targetImpressions: targetImpressions || 0,
+            adImageUrl: processedImages[0] || "",
+            frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
+          }),
+        }).catch(err => console.error("Ad live email failed:", err.message));
+      }
+    } catch (emailErr) {
+      console.error("[AdController] Failed to send ad live email:", emailErr.message);
+    }
 
     res.status(201).json({ success: true, data: newAd });
   } catch (error) {

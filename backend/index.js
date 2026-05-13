@@ -11,6 +11,7 @@ import { categoryPublicRouter, categoryAdminRouter } from "./modules/category/ca
 import postRoutes from "./modules/post/post.routes.js";
 import searchRoutes from "./modules/post/search.routes.js";
 import wishlistRoutes from "./modules/wishlist/wishlist.routes.js";
+import subscriptionRoutes from "./modules/subscription/subscription.routes.js";
 import passport from "passport";
 import "./config/passport.js";
 import { countryGateway } from "./middleware/countryGateway.js";
@@ -18,6 +19,8 @@ import legalPageRoutes from "./routes/legalPageRoutes.js";
 import chatRoutes from "./modules/chat/chat.routes.js";
 import reportRoutes from "./modules/report/report.routes.js";
 import adRoutes from "./modules/ad/ad.routes.js";
+import contactRoutes from "./modules/contact/contact.routes.js";
+import notificationRoutes from "./modules/notification/notification.routes.js";
 import http from "http";
 import initializeSocket from "./socket.js";
 
@@ -61,8 +64,14 @@ app.use("/api/posts", postRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/chat", chatRoutes);
+
 app.use("/api/reports", reportRoutes);
 app.use("/api/ads", adRoutes);
+app.use("/api/contact", contactRoutes);
+app.use("/api/notifications", notificationRoutes);
+
+app.use("/api/subscriptions", subscriptionRoutes);
+
 
 app.get("/", (req, res) => {
   res.send("API is running...");

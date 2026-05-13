@@ -3,6 +3,7 @@ import { generateAccessToken, generateRefreshToken } from "../utils/generateToke
 import { encryptField, decryptField } from "../utils/fieldEncryption.js";
 import { sendMail } from "../utils/mailer.js";
 import { getOtpEmailHtml } from "../templates/otpEmail.js";
+import { getWelcomeEmailHtml } from "../templates/welcomeEmail.js";
 import jwt from "jsonwebtoken";
 
 // Cookie config for refresh token
@@ -109,6 +110,14 @@ export const verifyOtp = async (req, res) => {
 
     user.refreshToken = refreshTokenValue;
     await user.save();
+
+    // Send welcome email after successful verification (non-blocking)
+    const userName = decryptField(user.name) || "User";
+    sendMail({
+      to: email,
+      subject: "🎉 Welcome to DealNBuy EU – You're All Set!",
+      html: getWelcomeEmailHtml(userName, process.env.FRONTEND_URL || "http://localhost:3000"),
+    }).catch(err => console.error("Welcome email failed:", err.message));
 
     // Set refresh token as HTTP-only cookie
     res.cookie("refreshToken", refreshTokenValue, COOKIE_OPTIONS);
