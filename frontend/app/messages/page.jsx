@@ -322,8 +322,8 @@ export default function MessagesPage() {
                     const displayName = other?.pseudoName || other?.name || "User";
                     const initial = displayName.charAt(0).toUpperCase();
                     const postTitle = conv.post?.title || "Item";
-                    const lastMsg = conv.lastMessage?.offer
-                      ? `💰 Offer: €${conv.lastMessage.offer.amount}`
+                    const lastMsg = conv.lastMessage?.messageType === "offer" && conv.lastMessage?.offer?.amount != null
+                      ? `💰 Offer: €${Number(conv.lastMessage.offer.amount).toLocaleString()}`
                       : conv.lastMessage?.text || "No messages yet";
 
                     return (

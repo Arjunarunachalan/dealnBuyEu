@@ -262,7 +262,7 @@ export const getPosts = async (req, res) => {
 
     const [posts, total] = await Promise.all([
       Post.find(query)
-        .populate("owner", "name pseudoName email")
+        .populate("userId", "name pseudoName email")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -272,16 +272,17 @@ export const getPosts = async (req, res) => {
 
     const formatted = posts.map(p => ({
       ...p,
-      owner: p.owner ? {
-        _id: p.owner._id,
-        name: safeDecrypt(p.owner.name),
-        pseudoName: safeDecrypt(p.owner.pseudoName),
-        email: safeDecrypt(p.owner.email),
+      owner: p.userId ? {
+        _id: p.userId._id,
+        name: safeDecrypt(p.userId.name),
+        pseudoName: safeDecrypt(p.userId.pseudoName),
+        email: safeDecrypt(p.userId.email),
       } : null
     }));
 
     return res.status(200).json({ success: true, data: { posts: formatted, total, page } });
   } catch (err) {
+    console.error("Admin getPosts error:", err);
     return res.status(500).json({ success: false, message: "Failed to fetch posts." });
   }
 };
